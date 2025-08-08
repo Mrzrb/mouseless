@@ -23,14 +23,14 @@
     - _Requirements: 5.3, 7.3_
 
 - [ ] 3. Create mouse control foundation
-  - [ ] 3.1 Implement basic mouse operations with enigo
+  - [x] 3.1 Implement basic mouse operations with enigo
     - Set up enigo for mouse movement, clicking, and scrolling
     - Create Position and ScreenBounds data structures
     - Implement multi-monitor detection and screen mapping
     - Add error handling for mouse operation failures
     - _Requirements: 1.2, 1.3, 1.5, 4.1, 4.2_
 
-  - [ ] 3.2 Add smooth cursor movement animations
+  - [x] 3.2 Add smooth cursor movement animations
     - Implement easing functions for natural movement curves
     - Create configurable movement speeds (fast/slow modes)
     - Add animation interpolation between start and end positions
@@ -38,14 +38,14 @@
     - _Requirements: 1.2, 5.4, 5.5, 8.3_
 
 - [ ] 4. Build mode management system
-  - [ ] 4.1 Create mode manager with state transitions
+  - [x] 4.1 Create mode manager with state transitions
     - Implement InteractionMode enum with Basic, Grid, Area, and Prediction variants
     - Build ModeManager with thread-safe mode switching
     - Add mode history tracking for undo functionality
     - Create event system for mode change notifications
     - _Requirements: 1.1, 6.1, 6.3_
 
-  - [ ] 4.2 Implement basic movement mode
+  - [x] 4.2 Implement basic movement mode
     - Handle I/K/J/L keys for directional cursor movement
     - Add N/M keys for left/right mouse clicks
     - Implement U/O/Y/P keys for scrolling operations

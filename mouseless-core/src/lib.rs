@@ -13,6 +13,11 @@ pub mod input;
 pub mod config;
 pub mod mouse;
 pub mod screen;
+pub mod mode;
+pub mod basic_mode;
+
+#[cfg(test)]
+pub mod integration_tests;
 
 // Re-export commonly used types
 pub use animation::*;
@@ -23,6 +28,8 @@ pub use input::*;
 pub use config::*;
 pub use mouse::*;
 pub use screen::*;
+pub use mode::*;
+pub use basic_mode::*;
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
