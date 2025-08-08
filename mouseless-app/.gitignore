@@ -1,0 +1,48 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Tauri specific
+/gen/
+/WixTools/
+
+# Frontend build artifacts
+/dist/
+/build/
+/out/
+
+# Node modules (if using npm/yarn for frontend)
+node_modules/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# macOS specific
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+
+# Bundle artifacts
+*.app
+*.dmg
+*.deb
+*.rpm
+*.msi
+*.exe

@@ -1,0 +1,20 @@
+[package]
+name = "mouseless-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Workspace dependencies
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+enigo = { workspace = true }
+global-hotkey = { workspace = true }
+async-trait = { workspace = true }
+
+# Additional core dependencies
+uuid = { version = "1.0", features = ["v4"] }
