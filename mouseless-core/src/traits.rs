@@ -27,16 +27,15 @@ pub trait InputProcessor: Send + Sync {
 }
 
 /// Trait for mouse control operations
-#[async_trait]
-pub trait MouseOperations: Send + Sync {
+pub trait MouseOperations {
     /// Move the mouse cursor to a specific position with animation
-    async fn move_to(&mut self, position: Position, animation: AnimationType) -> MouseResult<()>;
+    fn move_to(&mut self, position: Position, animation: AnimationType) -> MouseResult<()>;
     
     /// Perform a mouse click
-    async fn click(&mut self, button: MouseButton) -> MouseResult<()>;
+    fn click(&mut self, button: MouseButton) -> MouseResult<()>;
     
     /// Perform mouse scrolling
-    async fn scroll(&mut self, direction: ScrollDirection, amount: i32) -> MouseResult<()>;
+    fn scroll(&mut self, direction: ScrollDirection, amount: i32) -> MouseResult<()>;
     
     /// Get the current cursor position
     fn get_current_position(&self) -> MouseResult<Position>;

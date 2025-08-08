@@ -4,19 +4,25 @@
 //! It includes traits, data models, error handling, and logging utilities that form the foundation
 //! of the mouseless application.
 
+pub mod animation;
 pub mod error;
 pub mod models;
 pub mod traits;
 pub mod logging;
 pub mod input;
 pub mod config;
+pub mod mouse;
+pub mod screen;
 
 // Re-export commonly used types
+pub use animation::*;
 pub use error::{MouselessError, Result};
 pub use models::*;
 pub use traits::*;
 pub use input::*;
 pub use config::*;
+pub use mouse::*;
+pub use screen::*;
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
