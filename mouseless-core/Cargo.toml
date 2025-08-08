@@ -18,3 +18,8 @@ async-trait = { workspace = true }
 
 # Additional core dependencies
 uuid = { version = "1.0", features = ["v4"] }
+dirs = "5.0"
+toml = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.0"

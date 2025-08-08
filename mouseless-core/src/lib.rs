@@ -8,11 +8,15 @@ pub mod error;
 pub mod models;
 pub mod traits;
 pub mod logging;
+pub mod input;
+pub mod config;
 
 // Re-export commonly used types
 pub use error::{MouselessError, Result};
 pub use models::*;
 pub use traits::*;
+pub use input::*;
+pub use config::*;
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

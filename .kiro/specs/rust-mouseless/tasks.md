@@ -7,15 +7,15 @@
   - Configure logging with tracing and structured output
   - _Requirements: 7.5, 8.5_
 
-- [ ] 2. Implement basic input handling system
-  - [ ] 2.1 Create global hotkey registration and management
+- [x] 2. Implement basic input handling system
+  - [x] 2.1 Create global hotkey registration and management
     - Integrate global-hotkey crate for system-wide key capture
     - Implement configurable activation keys (CapsLock, modifiers)
     - Add double-click detection for activation trigger
     - Write unit tests for hotkey registration and event processing
     - _Requirements: 1.1, 5.1, 5.2_
 
-  - [ ] 2.2 Build key binding configuration system
+  - [x] 2.2 Build key binding configuration system
     - Create KeyBindings struct with serde serialization
     - Implement configuration loading from JSON/TOML files
     - Add validation for key binding conflicts and invalid combinations
