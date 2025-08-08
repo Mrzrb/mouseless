@@ -3,19 +3,22 @@
     "version": "0.1.0",
     "identifier": "com.mouseless.app",
     "build": {
-        "beforeBuildCommand": "",
-        "beforeDevCommand": "",
+        "beforeBuildCommand": "npm run build",
+        "beforeDevCommand": "npm run dev",
+        "devUrl": "http://localhost:5173",
         "frontendDist": "./dist"
     },
     "app": {
         "windows": [
             {
+                "label": "main",
                 "title": "Mouseless",
                 "width": 800,
                 "height": 600,
                 "resizable": true,
                 "fullscreen": false,
-                "visible": false
+                "visible": false,
+                "url": "index.html"
             }
         ],
         "security": {

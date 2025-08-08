@@ -52,7 +52,7 @@
     - Create B key for click-and-hold toggle functionality
     - _Requirements: 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 5. Integrate Tauri for UI overlays
+- [-] 5. Integrate Tauri for UI overlays
   - [ ] 5.1 Set up Tauri application structure
     - Initialize Tauri project with HTML/CSS/JavaScript frontend
     - Configure window management for overlay creation

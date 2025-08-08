@@ -117,7 +117,7 @@ pub struct Area {
 }
 
 /// Prediction target for AI mode
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PredictionTarget {
     pub position: Position,
     pub confidence: f32,
