@@ -8,20 +8,23 @@ export interface GridConfig {
   rows: number
   columns: number
   show_labels: boolean
-  cell_size: [number, number]
   animation_style: AnimationStyle
+  cell_padding: number
+  border_width: number
+  opacity: number
 }
 
 export interface PredictionTarget {
   position: Position
   confidence: number
   target_type: TargetType
-  label?: string
+  shortcut_key: string
+  description?: string
 }
 
-export type AnimationStyle = 'None' | 'Smooth' | 'Bounce' | 'Fade'
+export type AnimationStyle = 'Instant' | 'Linear' | 'Smooth' | 'Bounce'
 
-export type TargetType = 'Button' | 'Link' | 'Input' | 'Menu' | 'Icon' | 'Text'
+export type TargetType = 'Button' | 'Link' | 'TextField' | 'MenuItem' | 'Icon' | { Custom: string }
 
 export interface ScreenBounds {
   id: number

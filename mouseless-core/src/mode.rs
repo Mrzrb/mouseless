@@ -9,6 +9,7 @@ use crate::{
     models::{InteractionMode, KeyInput, Action},
     traits::{ModeController, KeyBindings},
     basic_mode::BasicMode,
+    grid_mode::GridMode,
 };
 
 /// Maximum number of modes to keep in history
@@ -48,6 +49,9 @@ pub struct ModeManager {
     
     /// Basic mode implementation
     basic_mode: Arc<Mutex<BasicMode>>,
+    
+    /// Grid mode implementation
+    grid_mode: Arc<Mutex<GridMode>>,
 }
 
 impl ModeManager {
@@ -64,6 +68,7 @@ impl ModeManager {
             fast_mode: Arc::new(Mutex::new(false)),
             hold_state: Arc::new(Mutex::new(false)),
             basic_mode: Arc::new(Mutex::new(BasicMode::new())),
+            grid_mode: Arc::new(Mutex::new(GridMode::new())),
         }
     }
     
@@ -177,6 +182,31 @@ impl ModeManager {
     pub fn get_movement_speed(&self) -> f32 {
         self.movement_speed.lock().map(|speed| *speed).unwrap_or(1.0)
     }
+    
+    /// Set grid manager for grid mode
+    pub fn set_grid_manager(&self, grid_manager: Option<crate::GridManager>) {
+        if let Ok(mut grid_mode) = self.grid_mode.lock() {
+            grid_mode.set_grid_manager(grid_manager);
+        }
+    }
+    
+    /// Get current key sequence for visual feedback (grid mode only)
+    pub fn get_current_key_sequence(&self) -> Option<String> {
+        if let Ok(grid_mode) = self.grid_mode.lock() {
+            grid_mode.get_current_sequence()
+        } else {
+            None
+        }
+    }
+    
+    /// Check if grid mode is waiting for second key
+    pub fn is_waiting_for_second_key(&self) -> bool {
+        if let Ok(grid_mode) = self.grid_mode.lock() {
+            grid_mode.is_waiting_for_second_key()
+        } else {
+            false
+        }
+    }
 }
 
 #[async_trait]
@@ -188,6 +218,28 @@ impl ModeController for ModeManager {
             *current = Some(mode.clone());
             prev
         };
+        
+        // Deactivate previous mode
+        if let Some(prev_mode) = &previous_mode {
+            match prev_mode {
+                InteractionMode::Grid => {
+                    if let Ok(mut grid_mode) = self.grid_mode.lock() {
+                        grid_mode.deactivate();
+                    }
+                }
+                _ => {} // Other modes don't need special deactivation yet
+            }
+        }
+        
+        // Activate new mode
+        match &mode {
+            InteractionMode::Grid => {
+                if let Ok(mut grid_mode) = self.grid_mode.lock() {
+                    grid_mode.activate();
+                }
+            }
+            _ => {} // Other modes don't need special activation yet
+        }
         
         // Add previous mode to history if it existed
         if let Some(prev) = previous_mode.clone() {
@@ -209,6 +261,16 @@ impl ModeController for ModeManager {
         };
         
         if let Some(mode) = current_mode {
+            // Deactivate the specific mode
+            match &mode {
+                InteractionMode::Grid => {
+                    if let Ok(mut grid_mode) = self.grid_mode.lock() {
+                        grid_mode.deactivate();
+                    }
+                }
+                _ => {} // Other modes don't need special deactivation yet
+            }
+            
             self.send_event(ModeEvent::ModeDeactivated(mode.clone()));
             info!("Deactivated mode: {:?}", mode);
         }
@@ -229,9 +291,14 @@ impl ModeController for ModeManager {
                 self.process_basic_input(input.clone())?
             }
             Some(InteractionMode::Grid) => {
-                // Grid mode - for now, fall back to basic input
-                // TODO: Implement grid-specific input handling in future tasks
-                self.process_basic_input(input.clone())?
+                // Grid mode - use grid-specific input handling
+                if let Ok(mut grid_mode) = self.grid_mode.lock() {
+                    let bindings = self.get_key_bindings();
+                    grid_mode.process_input(input.clone(), &bindings)?
+                } else {
+                    warn!("Failed to acquire grid mode lock, falling back to basic input");
+                    self.process_basic_input(input.clone())?
+                }
             }
             Some(InteractionMode::Area) => {
                 // Area mode - for now, fall back to basic input

@@ -52,30 +52,30 @@
     - Create B key for click-and-hold toggle functionality
     - _Requirements: 1.2, 1.3, 1.4, 1.5_
 
-- [-] 5. Integrate Tauri for UI overlays
-  - [ ] 5.1 Set up Tauri application structure
+- [x] 5. Integrate Tauri for UI overlays
+  - [x] 5.1 Set up Tauri application structure
     - Initialize Tauri project with HTML/CSS/JavaScript frontend
     - Configure window management for overlay creation
     - Set up IPC communication between Rust backend and frontend
     - Implement permission handling for macOS accessibility
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-  - [ ] 5.2 Create basic overlay rendering system
+  - [x] 5.2 Create basic overlay rendering system
     - Build UIManager component with overlay window management
     - Implement show/hide functionality for different overlay types
     - Add basic styling with CSS for overlay appearance
     - Create animation engine for smooth transitions
     - _Requirements: 9.1, 9.2, 9.10_
 
-- [ ] 6. Implement grid mode functionality
-  - [ ] 6.1 Create configurable grid overlay
+- [x] 6. Implement grid mode functionality
+  - [x] 6.1 Create configurable grid overlay
     - Build grid calculation logic for screen division
     - Generate two-key combinations for grid cell identification
     - Implement grid size configuration (rows/columns)
     - Add visual grid rendering with HTML/CSS
     - _Requirements: 2.1, 2.4_
 
-  - [ ] 6.2 Add grid interaction and navigation
+  - [x] 6.2 Add grid interaction and navigation
     - Handle two-key input sequences for grid cell selection
     - Implement cursor movement to grid cell centers
     - Add visual feedback for key press sequences

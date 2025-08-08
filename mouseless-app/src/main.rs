@@ -1,7 +1,6 @@
 use mouseless_core::{init, AppInfo, Result};
-use tauri::{App, AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
-use tracing::{error, info, warn};
-use std::collections::HashMap;
+use tauri::{App, AppHandle, Manager};
+use tracing::{info, warn};
 use std::sync::{Arc, Mutex};
 
 mod ui_manager;
@@ -34,8 +33,11 @@ pub fn run() {
             tauri_commands::show_area_overlay,
             tauri_commands::show_prediction_targets,
             tauri_commands::hide_all_overlays,
+            tauri_commands::show_activation_indicator,
+            tauri_commands::hide_activation_indicator,
             tauri_commands::check_accessibility_permissions,
-            tauri_commands::request_accessibility_permissions
+            tauri_commands::request_accessibility_permissions,
+            tauri_commands::get_grid_cell_position
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -60,7 +62,7 @@ fn setup_app(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-fn check_macos_permissions(app_handle: &AppHandle) {
+fn check_macos_permissions(_app_handle: &AppHandle) {
     #[cfg(target_os = "macos")]
     {
         use std::process::Command;

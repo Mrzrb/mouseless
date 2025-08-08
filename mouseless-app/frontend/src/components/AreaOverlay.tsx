@@ -55,15 +55,19 @@ const AreaOverlay: React.FC = () => {
             }}
           >
             <motion.div
-              className="text-6xl font-bold text-white opacity-80"
-              style={{ textShadow: '0 0 20px rgba(0, 0, 0, 0.8)' }}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              className="area-number"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
               transition={{
-                duration: 0.3,
+                duration: 0.5,
                 delay: regionId * 0.05 + 0.2,
                 type: 'spring',
-                stiffness: 200
+                stiffness: 200,
+                damping: 15
+              }}
+              whileHover={{
+                scale: 1.1,
+                transition: { duration: 0.2 }
               }}
             >
               {label}

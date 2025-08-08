@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Overlay Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+            margin-right: 10px;
+        }
+        input, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #333;
+            color: white;
+        }
+        button {
+            background: #007AFF;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056CC;
+        }
+        .info {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .key-test {
+            margin-top: 20px;
+        }
+        .key-input {
+            width: 100px;
+        }
+        .position-result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Grid Overlay Test</h1>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>Rows:</label>
+            <input type="number" id="rows" value="3" min="1" max="10">
+        </div>
+        <div class="control-group">
+            <label>Columns:</label>
+            <input type="number" id="columns" value="3" min="1" max="10">
+        </div>
+        <div class="control-group">
+            <label>Show Labels:</label>
+            <input type="checkbox" id="showLabels" checked>
+        </div>
+        <div class="control-group">
+            <label>Opacity:</label>
+            <input type="range" id="opacity" min="0.1" max="1.0" step="0.1" value="0.8">
+            <span id="opacityValue">0.8</span>
+        </div>
+        <div class="control-group">
+            <label>Cell Padding:</label>
+            <input type="number" id="cellPadding" value="2" min="0" max="10">
+        </div>
+        <div class="control-group">
+            <label>Border Width:</label>
+            <input type="number" id="borderWidth" value="1" min="0" max="5">
+        </div>
+    </div>
+    
+    <div class="control-group">
+        <button onclick="showGrid()">Show Grid Overlay</button>
+        <button onclick="hideOverlays()">Hide All Overlays</button>
+    </div>
+    
+    <div class="key-test">
+        <h3>Test Key Combinations</h3>
+        <div class="control-group">
+            <label>Key Combination:</label>
+            <input type="text" id="keyCombo" class="key-input" placeholder="e.g., aq" maxlength="2">
+            <button onclick="testKeyCombo()">Get Position</button>
+        </div>
+        <div id="positionResult" class="position-result" style="display: none;"></div>
+    </div>
+    
+    <div class="info">
+        <h3>Grid Configuration Info</h3>
+        <p>This test demonstrates the configurable grid overlay functionality:</p>
+        <ul>
+            <li><strong>Grid Calculation:</strong> The screen is divided into a configurable grid</li>
+            <li><strong>Key Combinations:</strong> Each cell gets a unique two-key combination</li>
+            <li><strong>Visual Rendering:</strong> Grid cells are rendered with glassmorphism effects</li>
+            <li><strong>Configuration:</strong> Rows, columns, opacity, padding, and borders are configurable</li>
+        </ul>
+        
+        <h4>Key Combination Pattern:</h4>
+        <p>Keys are generated using home row keys (a,s,d,f,g,h,j,k,l) combined with top row keys (q,w,e,r,t,y,u,i,o,p)</p>
+        <p>Examples: aq, aw, ae, ar, sq, sw, se, sr, etc.</p>
+    </div>
+
+    <script>
+        // Update opacity display
+        document.getElementById('opacity').addEventListener('input', function(e) {
+            document.getElementById('opacityValue').textContent = e.target.value;
+        });
+
+        async function showGrid() {
+            const rows = parseInt(document.getElementById('rows').value);
+            const columns = parseInt(document.getElementById('columns').value);
+            const showLabels = document.getElementById('showLabels').checked;
+            const opacity = parseFloat(document.getElementById('opacity').value);
+            const cellPadding = parseInt(document.getElementById('cellPadding').value);
+            const borderWidth = parseInt(document.getElementById('borderWidth').value);
+            
+            try {
+                // This would call the Tauri command in a real app
+                console.log('Grid Configuration:', {
+                    rows,
+                    columns,
+                    showLabels,
+                    opacity,
+                    cellPadding,
+                    borderWidth
+                });
+                
+                // Simulate the grid overlay
+                alert(`Grid overlay would be shown with:\n${rows}x${columns} grid\nLabels: ${showLabels}\nOpacity: ${opacity}\nPadding: ${cellPadding}px\nBorder: ${borderWidth}px`);
+                
+            } catch (error) {
+                console.error('Error showing grid:', error);
+                alert('Error showing grid: ' + error);
+            }
+        }
+        
+        async function hideOverlays() {
+            try {
+                // This would call the Tauri command in a real app
+                console.log('Hiding all overlays');
+                alert('All overlays would be hidden');
+            } catch (error) {
+                console.error('Error hiding overlays:', error);
+                alert('Error hiding overlays: ' + error);
+            }
+        }
+        
+        async function testKeyCombo() {
+            const keyCombo = document.getElementById('keyCombo').value.toLowerCase();
+            const resultDiv = document.getElementById('positionResult');
+            
+            if (keyCombo.length !== 2) {
+                alert('Please enter exactly 2 characters');
+                return;
+            }
+            
+            try {
+                // This would call the Tauri command in a real app
+                console.log('Testing key combination:', keyCombo);
+                
+                // Simulate getting position for key combination
+                // In a real implementation, this would call get_grid_cell_position
+                const mockPosition = {
+                    x: Math.floor(Math.random() * 1920),
+                    y: Math.floor(Math.random() * 1080)
+                };
+                
+                resultDiv.innerHTML = `
+                    <strong>Key Combination:</strong> ${keyCombo.toUpperCase()}<br>
+                    <strong>Position:</strong> (${mockPosition.x}, ${mockPosition.y})<br>
+                    <em>Note: This is a mock position. In the real app, this would return the actual grid cell center.</em>
+                `;
+                resultDiv.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error getting position:', error);
+                resultDiv.innerHTML = `<strong>Error:</strong> ${error}`;
+                resultDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,13 +1,16 @@
-use mouseless_core::{MouselessError, Result, Position, GridConfig, PredictionTarget, AnimationStyle};
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WebviewWindow};
+use mouseless_core::{MouselessError, Result, GridConfig, PredictionTarget, Position, GridManager, ScreenBounds, ModeManager};
+use tauri::{AppHandle, Emitter, WebviewUrl, WebviewWindowBuilder, WebviewWindow};
 use tracing::{debug, error, info, warn};
 use std::collections::HashMap;
+use std::sync::Arc;
 use serde_json::json;
 
 /// UI Manager handles all overlay window creation and management
 pub struct UIManager {
     app_handle: AppHandle,
     overlay_windows: HashMap<String, WebviewWindow>,
+    current_grid_manager: Option<GridManager>,
+    mode_manager: Option<Arc<std::sync::Mutex<ModeManager>>>,
 }
 
 impl UIManager {
@@ -17,7 +20,14 @@ impl UIManager {
         Ok(Self {
             app_handle,
             overlay_windows: HashMap::new(),
+            current_grid_manager: None,
+            mode_manager: None,
         })
+    }
+    
+    /// Set the mode manager for grid mode integration
+    pub fn set_mode_manager(&mut self, mode_manager: Arc<std::sync::Mutex<ModeManager>>) {
+        self.mode_manager = Some(mode_manager);
     }
     
     /// Show grid overlay with configurable grid settings
@@ -28,6 +38,19 @@ impl UIManager {
         // Close existing grid overlay if it exists
         self.hide_overlay("grid").await?;
         
+        // Get screen dimensions (for now use default, will be enhanced with actual screen detection)
+        let screen_bounds = ScreenBounds {
+            id: 1,
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1080,
+            is_primary: true,
+        };
+        
+        // Create grid manager with the configuration
+        let grid_manager = GridManager::new(grid_config.clone(), screen_bounds.clone())?;
+        
         // Create grid overlay window
         let window = self.create_overlay_window(
             "grid",
@@ -37,12 +60,44 @@ impl UIManager {
             false, // not resizable
         ).await?;
         
-        // Send grid configuration to the frontend
-        window.emit("configure-grid", &grid_config)
+        // Prepare grid data for frontend
+        let grid_data = json!({
+            "config": grid_config,
+            "cells": grid_manager.get_cells(),
+            "screen_bounds": {
+                "width": screen_bounds.width,
+                "height": screen_bounds.height
+            }
+        });
+        
+        // Send grid configuration to the frontend with animation settings
+        let enhanced_grid_data = json!({
+            "config": grid_config,
+            "cells": grid_manager.get_cells(),
+            "screen_bounds": {
+                "width": screen_bounds.width,
+                "height": screen_bounds.height
+            },
+            "animation": {
+                "type": "appear",
+                "duration": 400,
+                "easing": "easeOut"
+            }
+        });
+        
+        window.emit("configure-grid", &enhanced_grid_data)
             .map_err(|e| MouselessError::SystemError(
                 std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to configure grid: {}", e))
             ))?;
         
+        // Store the grid manager for later use and sync with mode manager
+        if let Some(mode_manager) = &self.mode_manager {
+            if let Ok(mode_mgr) = mode_manager.lock() {
+                mode_mgr.set_grid_manager(Some(grid_manager.clone()));
+            }
+        }
+        
+        self.current_grid_manager = Some(grid_manager);
         self.overlay_windows.insert("grid".to_string(), window);
         Ok(())
     }
@@ -114,12 +169,34 @@ impl UIManager {
     
     /// Hide a specific overlay by name
     pub async fn hide_overlay(&mut self, overlay_name: &str) -> Result<()> {
-        if let Some(window) = self.overlay_windows.remove(overlay_name) {
-            debug!("Hiding overlay: {}", overlay_name);
-            window.close()
-                .map_err(|e| MouselessError::SystemError(
-                    std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to close overlay {}: {}", overlay_name, e))
-                ))?;
+        if let Some(window) = self.overlay_windows.get(overlay_name) {
+            debug!("Hiding overlay with animation: {}", overlay_name);
+            
+            // Send disappear animation command for grid overlay
+            if overlay_name == "grid" {
+                let animation_data = json!({
+                    "animation": {
+                        "type": "disappear",
+                        "duration": 300,
+                        "easing": "easeIn"
+                    }
+                });
+                
+                if let Err(e) = window.emit("animate-grid-disappear", &animation_data) {
+                    warn!("Failed to send disappear animation: {}", e);
+                }
+                
+                // Wait a bit for animation to complete before closing
+                tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+            }
+            
+            // Remove from our tracking and close the window
+            if let Some(window) = self.overlay_windows.remove(overlay_name) {
+                window.close()
+                    .map_err(|e| MouselessError::SystemError(
+                        std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to close overlay {}: {}", overlay_name, e))
+                    ))?;
+            }
         }
         Ok(())
     }
@@ -177,6 +254,102 @@ impl UIManager {
         // For now, return a default size. This will be enhanced with actual screen detection
         // in future tasks when we integrate with the screen module
         Ok((1920.0, 1080.0))
+    }
+    
+    /// Animate cursor movement with smooth transitions
+    pub async fn animate_cursor_movement(&self, from: Position, to: Position) -> Result<()> {
+        info!("Animating cursor movement from ({}, {}) to ({}, {})", 
+              from.x, from.y, to.x, to.y);
+        
+        // This is a placeholder for cursor movement animation
+        // The actual animation will be handled by the mouse controller
+        // when it's integrated in future tasks
+        
+        Ok(())
+    }
+    
+    /// Show system-wide visual indicator for active state
+    pub async fn show_activation_indicator(&mut self) -> Result<()> {
+        info!("Showing activation indicator");
+        
+        // Close existing activation indicator if it exists
+        self.hide_overlay("activation-indicator").await?;
+        
+        // Create a subtle activation indicator overlay
+        let window = self.create_overlay_window(
+            "activation-indicator",
+            "Activation Indicator",
+            true, // transparent
+            true, // always on top
+            false, // not resizable
+        ).await?;
+        
+        // Send activation indicator configuration to the frontend
+        window.emit("show-activation-indicator", &serde_json::json!({}))
+            .map_err(|e| MouselessError::SystemError(
+                std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to show activation indicator: {}", e))
+            ))?;
+        
+        self.overlay_windows.insert("activation-indicator".to_string(), window);
+        Ok(())
+    }
+    
+    /// Hide system-wide visual indicator
+    pub async fn hide_activation_indicator(&mut self) -> Result<()> {
+        info!("Hiding activation indicator");
+        self.hide_overlay("activation-indicator").await
+    }
+    
+    /// Get the current grid manager
+    pub fn get_grid_manager(&self) -> Option<&GridManager> {
+        self.current_grid_manager.as_ref()
+    }
+    
+    /// Get grid cell position by key combination
+    pub fn get_grid_cell_position(&self, key_combination: &str) -> Option<Position> {
+        self.current_grid_manager.as_ref()
+            .and_then(|manager| manager.get_cell_by_keys(key_combination))
+            .map(|cell| cell.center_position)
+    }
+    
+    /// Show visual feedback for key sequence input
+    pub async fn show_key_sequence_feedback(&mut self, sequence: String) -> Result<()> {
+        info!("Showing key sequence feedback: {}", sequence);
+        
+        // Close existing feedback overlay if it exists
+        self.hide_overlay("key-feedback").await?;
+        
+        // Create key feedback overlay window
+        let window = self.create_overlay_window(
+            "key-feedback",
+            "Key Sequence Feedback",
+            true, // transparent
+            true, // always on top
+            false, // not resizable
+        ).await?;
+        
+        // Send key sequence data to the frontend
+        let feedback_data = json!({
+            "sequence": sequence,
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+        });
+        
+        window.emit("show-key-feedback", &feedback_data)
+            .map_err(|e| MouselessError::SystemError(
+                std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to show key feedback: {}", e))
+            ))?;
+        
+        self.overlay_windows.insert("key-feedback".to_string(), window);
+        Ok(())
+    }
+    
+    /// Hide key sequence feedback
+    pub async fn hide_key_sequence_feedback(&mut self) -> Result<()> {
+        info!("Hiding key sequence feedback");
+        self.hide_overlay("key-feedback").await
     }
 }
 

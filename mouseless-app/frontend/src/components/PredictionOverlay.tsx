@@ -34,7 +34,7 @@ const PredictionOverlay: React.FC<PredictionOverlayProps> = ({ targets }) => {
         return (
           <motion.div
             key={index}
-            className={`prediction-target ${getConfidenceClass(target.confidence)}`}
+            className={`prediction-target breathing ${getConfidenceClass(target.confidence)}`}
             style={{
               left: target.position.x,
               top: target.position.y,
@@ -44,25 +44,23 @@ const PredictionOverlay: React.FC<PredictionOverlayProps> = ({ targets }) => {
             initial={{ 
               opacity: 0, 
               scale: 0,
-              x: target.position.x,
-              y: target.position.y
+              rotate: -180
             }}
             animate={{ 
               opacity: 1, 
               scale: 1,
-              x: target.position.x,
-              y: target.position.y
+              rotate: 0
             }}
             transition={{
-              duration: 0.3,
-              delay: index * 0.03,
+              duration: 0.4,
+              delay: index * 0.05,
               type: 'spring',
-              stiffness: 300,
-              damping: 20
+              stiffness: 200,
+              damping: 15
             }}
             whileHover={{
-              scale: 1.2,
-              transition: { duration: 0.1 }
+              scale: 1.3,
+              transition: { duration: 0.15 }
             }}
           >
             {/* Confidence indicator */}
@@ -80,7 +78,7 @@ const PredictionOverlay: React.FC<PredictionOverlayProps> = ({ targets }) => {
             />
             
             {/* Target label */}
-            {target.label && (
+            {target.description && (
               <motion.div
                 className="absolute -top-8 left-1/2 transform -translate-x-1/2 
                            text-xs font-bold text-white bg-black bg-opacity-60 
@@ -89,7 +87,7 @@ const PredictionOverlay: React.FC<PredictionOverlayProps> = ({ targets }) => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 + 0.2 }}
               >
-                {target.label}
+                {target.description}
               </motion.div>
             )}
             

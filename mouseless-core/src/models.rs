@@ -95,6 +95,9 @@ pub struct GridConfig {
     pub columns: u32,
     pub show_labels: bool,
     pub animation_style: AnimationType,
+    pub cell_padding: u32,
+    pub border_width: u32,
+    pub opacity: f32,
 }
 
 impl Default for GridConfig {
@@ -104,6 +107,9 @@ impl Default for GridConfig {
             columns: 3,
             show_labels: true,
             animation_style: AnimationType::Smooth,
+            cell_padding: 2,
+            border_width: 1,
+            opacity: 0.8,
         }
     }
 }
@@ -127,7 +133,7 @@ pub struct PredictionTarget {
 }
 
 /// Types of prediction targets
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TargetType {
     Button,
     Link,
