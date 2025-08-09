@@ -9,8 +9,8 @@ use tracing_subscriber::{
 /// Initialize the logging system with structured output
 pub fn init_logging() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Create environment filter with default level
-    let filter_str = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| "mouseless=debug,info".to_string());
+    let filter_str =
+        std::env::var("RUST_LOG").unwrap_or_else(|_| "mouseless=debug,info".to_string());
 
     // Create console layer with pretty formatting
     let console_layer = fmt::layer()

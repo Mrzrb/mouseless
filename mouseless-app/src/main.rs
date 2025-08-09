@@ -40,7 +40,9 @@ pub fn run() {
             tauri_commands::get_grid_cell_position,
             tauri_commands::test_show_grid,
             tauri_commands::highlight_area,
-            tauri_commands::clear_area_highlight
+            tauri_commands::clear_area_highlight,
+            tauri_commands::move_mouse_to_position,
+            tauri_commands::move_mouse_to_grid_cell
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

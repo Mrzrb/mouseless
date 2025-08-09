@@ -16,7 +16,7 @@ impl Position {
             screen_id: None,
         }
     }
-    
+
     pub fn with_screen(x: i32, y: i32, screen_id: u32) -> Self {
         Self {
             x,
@@ -45,7 +45,7 @@ impl ScreenBounds {
             self.id,
         )
     }
-    
+
     pub fn contains(&self, position: Position) -> bool {
         position.x >= self.x
             && position.x < self.x + self.width as i32

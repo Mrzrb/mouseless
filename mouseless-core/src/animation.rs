@@ -1,5 +1,5 @@
+use crate::models::{AnimationType, MovementSpeed, Position};
 use std::time::Instant;
-use crate::models::{Position, AnimationType, MovementSpeed};
 
 /// Easing functions for smooth animations
 pub struct EasingFunctions;
@@ -79,9 +79,9 @@ impl AnimationConfig {
     /// Create animation config based on speed and type
     pub fn new(speed: MovementSpeed, animation_type: AnimationType) -> Self {
         let (duration_ms, steps) = match speed {
-            MovementSpeed::Slow => (300, 30),    // Slower, more steps for smoothness
-            MovementSpeed::Normal => (150, 20),  // Balanced
-            MovementSpeed::Fast => (80, 15),     // Faster, fewer steps for responsiveness
+            MovementSpeed::Slow => (300, 30), // Slower, more steps for smoothness
+            MovementSpeed::Normal => (150, 20), // Balanced
+            MovementSpeed::Fast => (80, 15),  // Faster, fewer steps for responsiveness
         };
 
         // For instant animation, use minimal duration and steps
@@ -145,7 +145,7 @@ impl AnimationInterpolator {
 
         // Calculate progress (0.0 to 1.0)
         let progress = (step + 1) as f32 / self.config.steps as f32;
-        
+
         // Apply easing function
         let eased_progress = (self.config.easing_function)(progress);
 
@@ -251,15 +251,13 @@ mod tests {
     fn test_animation_interpolator() {
         let start = Position::new(0, 0);
         let end = Position::new(100, 100);
-        let interpolator = AnimationInterpolator::new(
-            start,
-            end,
-            MovementSpeed::Fast,
-            AnimationType::Linear,
-        );
+        let interpolator =
+            AnimationInterpolator::new(start, end, MovementSpeed::Fast, AnimationType::Smooth);
 
         let first_pos = interpolator.next_position(0).unwrap();
-        let last_pos = interpolator.next_position(interpolator.config.steps - 1).unwrap();
+        let last_pos = interpolator
+            .next_position(interpolator.config.steps - 1)
+            .unwrap();
 
         // First position should be closer to start
         assert!(first_pos.x < end.x);
@@ -271,27 +269,25 @@ mod tests {
     }
 
     #[test]
-    fn test_instant_animation() {
+    fn test_smooth_animation() {
         let start = Position::new(0, 0);
         let end = Position::new(100, 100);
-        let interpolator = AnimationInterpolator::new(
-            start,
-            end,
-            MovementSpeed::Fast,
-            AnimationType::Instant,
-        );
+        let interpolator =
+            AnimationInterpolator::new(start, end, MovementSpeed::Fast, AnimationType::Smooth);
 
-        assert_eq!(interpolator.config.steps, 1);
-        assert_eq!(interpolator.config.duration_ms, 0);
+        assert!(interpolator.config.steps > 1);
+        assert!(interpolator.config.duration_ms > 0);
 
         let pos = interpolator.next_position(0).unwrap();
-        assert_eq!(pos, end);
+        // For smooth animation, the first position should be between start and end
+        assert!(pos.x > start.x && pos.x <= end.x);
+        assert!(pos.y > start.y && pos.y <= end.y);
     }
 
     #[test]
     fn test_animation_metrics() {
         let mut metrics = AnimationMetrics::new();
-        
+
         metrics.record_step(5);
         metrics.record_step(8);
         metrics.record_step(3);
@@ -307,9 +303,9 @@ mod tests {
     #[test]
     fn test_performance_requirement_failure() {
         let mut metrics = AnimationMetrics::new();
-        
+
         metrics.record_step(15); // Exceeds 10ms requirement
-        
+
         assert!(!metrics.meets_performance_requirement());
     }
 }

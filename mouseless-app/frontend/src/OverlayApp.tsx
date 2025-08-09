@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/core'
 import GridOverlay from './components/GridOverlay'
 import AreaOverlay from './components/AreaOverlay'
 import PredictionOverlay from './components/PredictionOverlay'
@@ -69,13 +70,23 @@ function OverlayApp() {
 
   useEffect(() => {
     console.log('OverlayApp: Setting up event listeners')
-    
+
+    // Try to focus the overlay window when it mounts
+    setTimeout(() => {
+      const overlay = document.querySelector('.overlay-window') as HTMLElement
+      if (overlay) {
+        overlay.focus()
+        console.log('OverlayApp: Focused overlay window on mount')
+      }
+    }, 100)
+
     // Listen for overlay configuration events from Rust backend
     const unlistenGrid = listen('configure-grid', (event) => {
-      console.log('OverlayApp: Received configure-grid event', event.payload)
+      console.log('🎉 OverlayApp: Received configure-grid event!', event.payload)
       const data = event.payload as GridData
       setGridData(data)
       setOverlayType('grid')
+      console.log('✅ OverlayApp: Grid data set, overlayType set to grid, cells:', data.cells?.length)
     })
 
     const unlistenArea = listen('configure-area', (event) => {
@@ -123,6 +134,11 @@ function OverlayApp() {
       setHighlightedArea(data.highlightedArea)
     })
 
+    // Test event listener to see if overlay can receive any events
+    const unlistenTest = listen('test-event', (event) => {
+      console.log('🧪 OverlayApp: Received test event!', event.payload)
+    })
+
     // Cleanup listeners
     return () => {
       unlistenGrid.then(fn => fn())
@@ -134,27 +150,32 @@ function OverlayApp() {
       unlistenKeyFeedback.then(fn => fn())
       unlistenGridDisappear.then(fn => fn())
       unlistenHighlightArea.then(fn => fn())
+      unlistenTest.then(fn => fn())
     }
   }, [])
 
   // Keyboard event handling for grid mode
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // console.log('OverlayApp: Key pressed:', event.key)
-      
-      // if (overlayType !== 'grid' || !gridData) {
-      //   console.log('OverlayApp: Not in grid mode or no grid data')
-      //   return
-      // }
+    const handleKeyDown = async (event: KeyboardEvent) => {
+      console.log('OverlayApp: Key pressed:', event.key, 'overlayType:', overlayType, 'hasGridData:', !!gridData)
+
+      if (overlayType !== 'grid' || !gridData) {
+        console.log('OverlayApp: Not in grid mode or no grid data, overlayType:', overlayType, 'gridData:', !!gridData)
+        return
+      }
 
       const key = event.key.toLowerCase()
       const now = Date.now()
 
       // Exit keys
       if (key === ' ' || key === 'escape') {
-        console.log('OverlayApp: Exit key pressed')
-        // We can't directly call hideAllOverlays here, so we'll emit an event
-        // For now, just log
+        console.log('OverlayApp: Exit key pressed, hiding overlays')
+        try {
+          await invoke('hide_all_overlays')
+          console.log('OverlayApp: Overlays hidden successfully')
+        } catch (error) {
+          console.error('OverlayApp: Failed to hide overlays:', error)
+        }
         return
       }
 
@@ -179,17 +200,17 @@ function OverlayApp() {
         if (secondKeys.includes(key)) {
           const combination = keySequence + key
           console.log('OverlayApp: Key combination:', combination.toUpperCase())
-          
-          // Find the grid cell for this combination
-          const cell = gridData.cells.find(c => c.key_combination === combination)
-          if (cell) {
-            console.log('OverlayApp: Moving to position:', cell.center_position)
-            // Here we would normally move the mouse, but for now just log
-            // In a real implementation, this would call a Tauri command to move the mouse
-          } else {
-            console.log('OverlayApp: No cell found for combination:', combination.toUpperCase())
+
+          try {
+            // Call Tauri command to move mouse to grid cell
+            await invoke('move_mouse_to_grid_cell', {
+              key_combination: combination
+            })
+            console.log('OverlayApp: Mouse moved successfully to grid cell:', combination.toUpperCase())
+          } catch (error) {
+            console.error('OverlayApp: Failed to move mouse to grid cell:', error)
           }
-          
+
           // Reset sequence
           setKeySequence('')
           setLastKeyTime(0)
@@ -213,117 +234,69 @@ function OverlayApp() {
   console.log('OverlayApp: Rendering with overlayType:', overlayType, 'gridData:', gridData)
 
   return (
-    <div 
-      className="overlay-window" 
-      style={{ width: '100vw', height: '100vh' }}
+    <div
+      className="overlay-window"
+      style={{
+        width: '100vw',
+        height: '100vh',
+        background: 'transparent',
+        pointerEvents: overlayType === 'grid' ? 'auto' : 'none'
+      }}
       tabIndex={0}
-      onKeyDown={(e) => console.log('React onKeyDown:', e.key)}
       onClick={() => {
         console.log('Overlay clicked, focusing...')
         const overlay = document.querySelector('.overlay-window') as HTMLElement
         overlay?.focus()
       }}
+      onKeyDown={(e) => {
+        console.log('React onKeyDown:', e.key)
+        e.preventDefault()
+      }}
     >
-      {/* Debug info - always visible */}
-      <div style={{ 
-        position: 'fixed', 
-        top: '10px', 
-        left: '10px', 
-        background: 'rgba(255,0,0,0.8)', 
-        color: 'white', 
-        padding: '10px',
-        borderRadius: '4px',
-        fontSize: '14px',
-        zIndex: 9999,
-        border: '2px solid yellow'
-      }}>
-        <div>🎯 OVERLAY WINDOW ACTIVE</div>
-        <div>Overlay Type: {overlayType}</div>
-        <div>Grid Data: {gridData ? 'Available' : 'None'}</div>
-        <div>Cells: {gridData?.cells?.length || 0}</div>
-        {keySequence && <div>Key Sequence: {keySequence.toUpperCase()}_</div>}
-        <div>Time: {new Date().toLocaleTimeString()}</div>
-      </div>
-      
-      {/* Test grid - always show a simple grid for testing */}
-      <div style={{
-        position: 'fixed',
-        top: '100px',
-        left: '100px',
-        width: '300px',
-        height: '300px',
-        background: 'rgba(0,255,0,0.3)',
-        border: '2px solid red',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gridTemplateRows: 'repeat(3, 1fr)',
-        gap: '2px'
-      }}>
-        {Array.from({length: 9}, (_, i) => (
-          <div key={i} style={{
-            background: 'rgba(255,255,255,0.5)',
-            border: '1px solid black',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px',
-            fontWeight: 'bold'
-          }}>
-            {String.fromCharCode(65 + Math.floor(i/3)) + String.fromCharCode(81 + (i%3))}
-          </div>
-        ))}
-      </div>
-
-      {/* Focus test button */}
-      <button
-        style={{
-          position: 'fixed',
-          top: '420px',
-          left: '100px',
-          padding: '10px 20px',
-          background: 'rgba(255,255,0,0.8)',
-          border: '2px solid black',
-          borderRadius: '4px',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          cursor: 'pointer'
-        }}
-        onClick={() => {
-          console.log('Focus button clicked!')
-          const overlay = document.querySelector('.overlay-window') as HTMLElement
-          if (overlay) {
-            overlay.focus()
-            console.log('Overlay focused')
-          }
-        }}
-      >
-        点击获取焦点
-      </button>
-
       {overlayType === 'grid' && gridData && (
-        <GridOverlay gridData={gridData} />
+        <GridOverlay gridData={gridData} keySequence={keySequence} />
       )}
-      
+
       {overlayType === 'area' && (
-        <AreaOverlay 
-          areas={areaData?.areas} 
+        <AreaOverlay
+          areas={areaData?.areas}
           highlightedArea={highlightedArea || undefined}
         />
       )}
-      
+
       {overlayType === 'prediction' && predictionTargets.length > 0 && (
         <PredictionOverlay targets={predictionTargets} />
       )}
-      
+
       {showActivationIndicator && (
         <ActivationIndicator />
       )}
-      
+
       {keyFeedback && (
-        <KeyFeedback 
-          sequence={keyFeedback.sequence} 
-          timestamp={keyFeedback.timestamp} 
+        <KeyFeedback
+          sequence={keyFeedback.sequence}
+          timestamp={keyFeedback.timestamp}
         />
+      )}
+
+      {/* Key sequence indicator - only show when typing */}
+      {keySequence && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          fontFamily: 'monospace',
+          zIndex: 10000,
+          pointerEvents: 'none'
+        }}>
+          {keySequence.toUpperCase()}_
+        </div>
       )}
     </div>
   )

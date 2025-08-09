@@ -1,13 +1,13 @@
 //! Configuration management module
-//! 
+//!
 //! This module provides functionality for:
 //! - Loading and saving configuration from JSON/TOML files
 //! - Validating configuration values
 //! - Managing application settings and key bindings
 
-use std::path::{Path, PathBuf};
-use std::fs;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
 use crate::{
@@ -115,11 +115,10 @@ impl ConfigManager {
 
     /// Get the default configuration directory
     pub fn default_config_dir() -> ConfigResult<PathBuf> {
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| ConfigError::LoadFailed {
-                path: "home directory".to_string(),
-                reason: "Could not determine home directory".to_string(),
-            })?;
+        let home_dir = dirs::home_dir().ok_or_else(|| ConfigError::LoadFailed {
+            path: "home directory".to_string(),
+            reason: "Could not determine home directory".to_string(),
+        })?;
 
         Ok(home_dir.join(".config").join("mouseless"))
     }
@@ -132,35 +131,36 @@ impl ConfigManager {
     /// Load configuration from file
     pub fn load(&mut self) -> ConfigResult<()> {
         if !self.config_path.exists() {
-            info!("Configuration file does not exist, creating default: {:?}", self.config_path);
+            info!(
+                "Configuration file does not exist, creating default: {:?}",
+                self.config_path
+            );
             self.save()?;
             return Ok(());
         }
 
-        let content = fs::read_to_string(&self.config_path)
-            .map_err(|e| ConfigError::LoadFailed {
+        let content =
+            fs::read_to_string(&self.config_path).map_err(|e| ConfigError::LoadFailed {
                 path: self.config_path.display().to_string(),
                 reason: e.to_string(),
             })?;
 
         // Try to parse as JSON first, then TOML
         let config = if self.config_path.extension().and_then(|s| s.to_str()) == Some("toml") {
-            toml::from_str(&content)
-                .map_err(|e| ConfigError::LoadFailed {
-                    path: self.config_path.display().to_string(),
-                    reason: format!("TOML parsing error: {}", e),
-                })?
+            toml::from_str(&content).map_err(|e| ConfigError::LoadFailed {
+                path: self.config_path.display().to_string(),
+                reason: format!("TOML parsing error: {}", e),
+            })?
         } else {
-            serde_json::from_str(&content)
-                .map_err(|e| ConfigError::LoadFailed {
-                    path: self.config_path.display().to_string(),
-                    reason: format!("JSON parsing error: {}", e),
-                })?
+            serde_json::from_str(&content).map_err(|e| ConfigError::LoadFailed {
+                path: self.config_path.display().to_string(),
+                reason: format!("JSON parsing error: {}", e),
+            })?
         };
 
         // Validate the loaded configuration
         self.validate_config(&config)?;
-        
+
         self.current_config = config;
         info!("Loaded configuration from: {:?}", self.config_path);
         Ok(())
@@ -170,33 +170,31 @@ impl ConfigManager {
     pub fn save(&self) -> ConfigResult<()> {
         // Create directory if it doesn't exist
         if let Some(parent) = self.config_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| ConfigError::SaveFailed {
-                    path: parent.display().to_string(),
-                    reason: e.to_string(),
-                })?;
+            fs::create_dir_all(parent).map_err(|e| ConfigError::SaveFailed {
+                path: parent.display().to_string(),
+                reason: e.to_string(),
+            })?;
         }
 
         // Serialize based on file extension
         let content = if self.config_path.extension().and_then(|s| s.to_str()) == Some("toml") {
-            toml::to_string_pretty(&self.current_config)
-                .map_err(|e| ConfigError::SaveFailed {
-                    path: self.config_path.display().to_string(),
-                    reason: format!("TOML serialization error: {}", e),
-                })?
+            toml::to_string_pretty(&self.current_config).map_err(|e| ConfigError::SaveFailed {
+                path: self.config_path.display().to_string(),
+                reason: format!("TOML serialization error: {}", e),
+            })?
         } else {
-            serde_json::to_string_pretty(&self.current_config)
-                .map_err(|e| ConfigError::SaveFailed {
+            serde_json::to_string_pretty(&self.current_config).map_err(|e| {
+                ConfigError::SaveFailed {
                     path: self.config_path.display().to_string(),
                     reason: format!("JSON serialization error: {}", e),
-                })?
+                }
+            })?
         };
 
-        fs::write(&self.config_path, content)
-            .map_err(|e| ConfigError::SaveFailed {
-                path: self.config_path.display().to_string(),
-                reason: e.to_string(),
-            })?;
+        fs::write(&self.config_path, content).map_err(|e| ConfigError::SaveFailed {
+            path: self.config_path.display().to_string(),
+            reason: e.to_string(),
+        })?;
 
         info!("Saved configuration to: {:?}", self.config_path);
         Ok(())
@@ -217,10 +215,11 @@ impl ConfigManager {
     /// Update key bindings
     pub fn update_key_bindings(&mut self, bindings: KeyBindings) -> ConfigResult<()> {
         // Validate key bindings using the input handler validation
-        crate::input::InputHandler::validate_key_bindings(&bindings)
-            .map_err(|e| ConfigError::ValidationFailed {
+        crate::input::InputHandler::validate_key_bindings(&bindings).map_err(|e| {
+            ConfigError::ValidationFailed {
                 reason: format!("Key binding validation failed: {}", e),
-            })?;
+            }
+        })?;
 
         self.current_config.keybindings = bindings;
         Ok(())
@@ -257,10 +256,11 @@ impl ConfigManager {
     /// Validate entire configuration
     fn validate_config(&self, config: &AppConfig) -> ConfigResult<()> {
         // Validate key bindings
-        crate::input::InputHandler::validate_key_bindings(&config.keybindings)
-            .map_err(|e| ConfigError::ValidationFailed {
+        crate::input::InputHandler::validate_key_bindings(&config.keybindings).map_err(|e| {
+            ConfigError::ValidationFailed {
                 reason: format!("Key binding validation failed: {}", e),
-            })?;
+            }
+        })?;
 
         // Validate other components
         self.validate_activation_config(&config.activation)?;
@@ -281,7 +281,10 @@ impl ConfigManager {
         }
 
         if activation.double_click_timeout_ms > 2000 {
-            warn!("Double-click timeout is very high: {}ms", activation.double_click_timeout_ms);
+            warn!(
+                "Double-click timeout is very high: {}ms",
+                activation.double_click_timeout_ms
+            );
         }
 
         if activation.activation_timeout_ms == 0 {
@@ -341,7 +344,10 @@ impl ConfigManager {
         }
 
         if ui.animation_duration_ms > 2000 {
-            warn!("Animation duration is very long: {}ms", ui.animation_duration_ms);
+            warn!(
+                "Animation duration is very long: {}ms",
+                ui.animation_duration_ms
+            );
         }
 
         Ok(())
@@ -393,36 +399,34 @@ impl ConfigManager {
     /// Export configuration to a different file
     pub fn export_to<P: AsRef<Path>>(&self, path: P) -> ConfigResult<()> {
         let path = path.as_ref();
-        
+
         // Create directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| ConfigError::SaveFailed {
-                    path: parent.display().to_string(),
-                    reason: e.to_string(),
-                })?;
+            fs::create_dir_all(parent).map_err(|e| ConfigError::SaveFailed {
+                path: parent.display().to_string(),
+                reason: e.to_string(),
+            })?;
         }
 
         // Serialize based on file extension
         let content = if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-            toml::to_string_pretty(&self.current_config)
-                .map_err(|e| ConfigError::SaveFailed {
-                    path: path.display().to_string(),
-                    reason: format!("TOML serialization error: {}", e),
-                })?
+            toml::to_string_pretty(&self.current_config).map_err(|e| ConfigError::SaveFailed {
+                path: path.display().to_string(),
+                reason: format!("TOML serialization error: {}", e),
+            })?
         } else {
-            serde_json::to_string_pretty(&self.current_config)
-                .map_err(|e| ConfigError::SaveFailed {
+            serde_json::to_string_pretty(&self.current_config).map_err(|e| {
+                ConfigError::SaveFailed {
                     path: path.display().to_string(),
                     reason: format!("JSON serialization error: {}", e),
-                })?
+                }
+            })?
         };
 
-        fs::write(path, content)
-            .map_err(|e| ConfigError::SaveFailed {
-                path: path.display().to_string(),
-                reason: e.to_string(),
-            })?;
+        fs::write(path, content).map_err(|e| ConfigError::SaveFailed {
+            path: path.display().to_string(),
+            reason: e.to_string(),
+        })?;
 
         info!("Exported configuration to: {:?}", path);
         Ok(())
@@ -431,31 +435,28 @@ impl ConfigManager {
     /// Import configuration from a different file
     pub fn import_from<P: AsRef<Path>>(&mut self, path: P) -> ConfigResult<()> {
         let path = path.as_ref();
-        
-        let content = fs::read_to_string(path)
-            .map_err(|e| ConfigError::LoadFailed {
-                path: path.display().to_string(),
-                reason: e.to_string(),
-            })?;
+
+        let content = fs::read_to_string(path).map_err(|e| ConfigError::LoadFailed {
+            path: path.display().to_string(),
+            reason: e.to_string(),
+        })?;
 
         // Try to parse as JSON first, then TOML
         let config: AppConfig = if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-            toml::from_str(&content)
-                .map_err(|e| ConfigError::LoadFailed {
-                    path: path.display().to_string(),
-                    reason: format!("TOML parsing error: {}", e),
-                })?
+            toml::from_str(&content).map_err(|e| ConfigError::LoadFailed {
+                path: path.display().to_string(),
+                reason: format!("TOML parsing error: {}", e),
+            })?
         } else {
-            serde_json::from_str(&content)
-                .map_err(|e| ConfigError::LoadFailed {
-                    path: path.display().to_string(),
-                    reason: format!("JSON parsing error: {}", e),
-                })?
+            serde_json::from_str(&content).map_err(|e| ConfigError::LoadFailed {
+                path: path.display().to_string(),
+                reason: format!("JSON parsing error: {}", e),
+            })?
         };
 
         // Validate the imported configuration
         self.validate_config(&config)?;
-        
+
         self.current_config = config;
         info!("Imported configuration from: {:?}", path);
         Ok(())
@@ -470,7 +471,10 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = AppConfig::default();
-        assert_eq!(config.activation.trigger_key, crate::input::ActivationKey::CapsLock);
+        assert_eq!(
+            config.activation.trigger_key,
+            crate::input::ActivationKey::CapsLock
+        );
         assert_eq!(config.movement.default_speed, MovementSpeed::Normal);
         assert!(config.ui.show_mode_indicators);
         assert_eq!(config.theme.name, "default");
@@ -480,7 +484,7 @@ mod tests {
     fn test_config_manager_creation() {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.json");
-        
+
         let manager = ConfigManager::new(&config_path);
         assert_eq!(manager.config_path, config_path);
     }
@@ -489,21 +493,21 @@ mod tests {
     fn test_save_and_load_json() {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.json");
-        
+
         let mut manager = ConfigManager::new(&config_path);
-        
+
         // Modify config
         manager.current_config.movement.step_size = 20;
         manager.current_config.ui.overlay_opacity = 0.5;
-        
+
         // Save
         assert!(manager.save().is_ok());
         assert!(config_path.exists());
-        
+
         // Load into new manager
         let mut new_manager = ConfigManager::new(&config_path);
         assert!(new_manager.load().is_ok());
-        
+
         assert_eq!(new_manager.current_config.movement.step_size, 20);
         assert_eq!(new_manager.current_config.ui.overlay_opacity, 0.5);
     }
@@ -512,21 +516,21 @@ mod tests {
     fn test_save_and_load_toml() {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.toml");
-        
+
         let mut manager = ConfigManager::new(&config_path);
-        
+
         // Modify config
         manager.current_config.movement.step_size = 15;
         manager.current_config.activation.double_click_required = false;
-        
+
         // Save
         assert!(manager.save().is_ok());
         assert!(config_path.exists());
-        
+
         // Load into new manager
         let mut new_manager = ConfigManager::new(&config_path);
         assert!(new_manager.load().is_ok());
-        
+
         assert_eq!(new_manager.current_config.movement.step_size, 15);
         assert!(!new_manager.current_config.activation.double_click_required);
     }
@@ -536,17 +540,17 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.json");
         let mut manager = ConfigManager::new(&config_path);
-        
+
         // Test invalid overlay opacity
         let mut invalid_config = AppConfig::default();
         invalid_config.ui.overlay_opacity = 1.5;
         assert!(manager.update_config(invalid_config).is_err());
-        
+
         // Test invalid color format
         let mut invalid_config = AppConfig::default();
         invalid_config.theme.primary_color = "invalid".to_string();
         assert!(manager.update_config(invalid_config).is_err());
-        
+
         // Test invalid step size
         let mut invalid_config = AppConfig::default();
         invalid_config.movement.step_size = -5;
@@ -558,13 +562,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.json");
         let mut manager = ConfigManager::new(&config_path);
-        
+
         // Valid key bindings
         let mut valid_bindings = KeyBindings::default();
         valid_bindings.move_up = 'w';
         assert!(manager.update_key_bindings(valid_bindings.clone()).is_ok());
         assert_eq!(manager.current_config.keybindings.move_up, 'w');
-        
+
         // Invalid key bindings (duplicate)
         let mut invalid_bindings = KeyBindings::default();
         invalid_bindings.move_up = 'n'; // Same as left_click
@@ -576,20 +580,20 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("config.json");
         let export_path = temp_dir.path().join("exported.json");
-        
+
         let mut manager = ConfigManager::new(&config_path);
-        
+
         // Modify config
         manager.current_config.movement.step_size = 25;
-        
+
         // Export
         assert!(manager.export_to(&export_path).is_ok());
         assert!(export_path.exists());
-        
+
         // Reset and import
         manager.reset_to_defaults();
         assert_eq!(manager.current_config.movement.step_size, 10); // Default
-        
+
         assert!(manager.import_from(&export_path).is_ok());
         assert_eq!(manager.current_config.movement.step_size, 25);
     }
@@ -598,9 +602,9 @@ mod tests {
     fn test_load_nonexistent_file() {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("nonexistent.json");
-        
+
         let mut manager = ConfigManager::new(&config_path);
-        
+
         // Should create default config file
         assert!(manager.load().is_ok());
         assert!(config_path.exists());

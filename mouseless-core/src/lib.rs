@@ -1,41 +1,41 @@
 //! Mouseless Core Library
-//! 
+//!
 //! This library provides the core functionality for the Rust-based keyboard mouse control tool.
 //! It includes traits, data models, error handling, and logging utilities that form the foundation
 //! of the mouseless application.
 
 pub mod animation;
-pub mod error;
-pub mod models;
-pub mod traits;
-pub mod logging;
-pub mod input;
-pub mod config;
-pub mod mouse;
-pub mod screen;
-pub mod mode;
+pub mod area_mode;
 pub mod basic_mode;
+pub mod config;
+pub mod error;
 pub mod grid;
 pub mod grid_mode;
-pub mod area_mode;
+pub mod input;
+pub mod logging;
+pub mod mode;
+pub mod models;
+pub mod mouse;
+pub mod screen;
+pub mod traits;
 
 #[cfg(test)]
 pub mod integration_tests;
 
 // Re-export commonly used types
 pub use animation::*;
-pub use error::{MouselessError, Result};
-pub use models::*;
-pub use traits::*;
-pub use input::*;
-pub use config::*;
-pub use mouse::*;
-pub use screen::*;
-pub use mode::*;
+pub use area_mode::*;
 pub use basic_mode::*;
+pub use config::*;
+pub use error::{MouselessError, Result};
 pub use grid::*;
 pub use grid_mode::*;
-pub use area_mode::*;
+pub use input::*;
+pub use mode::*;
+pub use models::*;
+pub use mouse::*;
+pub use screen::*;
+pub use traits::*;
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -59,17 +59,16 @@ impl Default for AppInfo {
 
 /// Initialize the core library
 pub fn init() -> Result<()> {
-    logging::init_logging()
-        .map_err(|e| MouselessError::SystemError(
-            std::io::Error::new(std::io::ErrorKind::Other, e)
-        ))?;
-    
+    logging::init_logging().map_err(|e| {
+        MouselessError::SystemError(std::io::Error::new(std::io::ErrorKind::Other, e))
+    })?;
+
     tracing::info!(
         name = AppInfo::default().name,
         version = AppInfo::default().version,
         "Mouseless core library initialized"
     );
-    
+
     Ok(())
 }
 
