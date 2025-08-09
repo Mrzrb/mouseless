@@ -14,6 +14,78 @@
 }
 
 @layer components {
+  .app-container {
+    @apply h-full w-full flex flex-col;
+    background: #1a1a1a;
+    color: white;
+  }
+  
+  .control-panel {
+    @apply p-6 bg-gray-900 border-b border-gray-700;
+    flex-shrink: 0;
+  }
+  
+  .control-panel h1 {
+    @apply text-2xl font-bold mb-4 text-center;
+  }
+  
+  .button-group {
+    @apply flex gap-4 justify-center mb-6;
+  }
+  
+  .btn {
+    @apply px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer border-none;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white;
+  }
+  
+  .btn-secondary {
+    @apply bg-green-600 hover:bg-green-700 text-white;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white;
+  }
+  
+  .instructions {
+    @apply bg-gray-800 p-4 rounded-lg;
+  }
+  
+  .instructions h3 {
+    @apply text-lg font-semibold mb-3 text-green-400;
+  }
+  
+  .instructions p {
+    @apply mb-2 text-gray-300;
+  }
+  
+  .key-grid h4 {
+    @apply text-base font-semibold mt-4 mb-3 text-blue-400;
+  }
+  
+  .key-demo {
+    @apply grid grid-cols-3 gap-2 max-w-md mx-auto;
+  }
+  
+  .key-cell {
+    @apply bg-gray-700 p-3 text-center rounded border-2 border-gray-600 font-mono text-sm font-bold;
+    transition: all 0.2s;
+  }
+  
+  .key-cell:hover {
+    @apply border-blue-500 bg-gray-600;
+  }
+  
+  .key-cell small {
+    @apply text-xs text-gray-400 font-normal;
+  }
+  
+  .overlay-container {
+    @apply flex-1 relative;
+  }
+  
   .overlay-window {
     @apply fixed inset-0 pointer-events-none;
     -webkit-app-region: no-drag;

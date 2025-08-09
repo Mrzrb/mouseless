@@ -18,7 +18,7 @@ pub async fn show_grid_overlay(
     border_width: Option<u32>,
     opacity: Option<f32>,
 ) -> std::result::Result<(), String> {
-    debug!("Tauri command: show_grid_overlay");
+    info!("🎯 Tauri command: show_grid_overlay - rows: {}, columns: {}", rows, columns);
     
     let grid_config = GridConfig {
         rows,
@@ -30,25 +30,42 @@ pub async fn show_grid_overlay(
         opacity: opacity.unwrap_or(0.8),
     };
     
+    info!("📋 Grid config created: {:?}", grid_config);
+    
     // Extract the UI manager from the state without holding the lock across await
     let ui_manager = {
         let mut ui_manager_guard = ui_manager_state.lock()
-            .map_err(|e| format!("Failed to lock UI manager: {}", e))?;
+            .map_err(|e| {
+                error!("❌ Failed to lock UI manager: {}", e);
+                format!("Failed to lock UI manager: {}", e)
+            })?;
         
         ui_manager_guard.take()
     };
     
     if let Some(mut ui_manager) = ui_manager {
+        info!("✅ UI manager found, calling show_grid_overlay...");
         let result = ui_manager.show_grid_overlay(grid_config).await
-            .map_err(|e| format!("Failed to show grid overlay: {}", e));
+            .map_err(|e| {
+                error!("❌ Failed to show grid overlay: {}", e);
+                format!("Failed to show grid overlay: {}", e)
+            });
         
         // Put the UI manager back
         let mut ui_manager_guard = ui_manager_state.lock()
-            .map_err(|e| format!("Failed to lock UI manager: {}", e))?;
+            .map_err(|e| {
+                error!("❌ Failed to lock UI manager when putting back: {}", e);
+                format!("Failed to lock UI manager: {}", e)
+            })?;
         *ui_manager_guard = Some(ui_manager);
+        
+        if result.is_ok() {
+            info!("🎉 Grid overlay command completed successfully");
+        }
         
         result
     } else {
+        error!("❌ UI manager not initialized");
         Err("UI manager not initialized".to_string())
     }
 }
@@ -72,6 +89,70 @@ pub async fn show_area_overlay(
     if let Some(mut ui_manager) = ui_manager {
         let result = ui_manager.show_area_overlay().await
             .map_err(|e| format!("Failed to show area overlay: {}", e));
+        
+        // Put the UI manager back
+        let mut ui_manager_guard = ui_manager_state.lock()
+            .map_err(|e| format!("Failed to lock UI manager: {}", e))?;
+        *ui_manager_guard = Some(ui_manager);
+        
+        result
+    } else {
+        Err("UI manager not initialized".to_string())
+    }
+}
+
+/// Highlight a specific area in the area overlay
+#[tauri::command]
+pub async fn highlight_area(
+    _app_handle: AppHandle,
+    ui_manager_state: State<'_, UIManagerState>,
+    area_key: String,
+) -> std::result::Result<(), String> {
+    debug!("Tauri command: highlight_area - key: {}", area_key);
+    
+    // Extract the UI manager from the state without holding the lock across await
+    let ui_manager = {
+        let mut ui_manager_guard = ui_manager_state.lock()
+            .map_err(|e| format!("Failed to lock UI manager: {}", e))?;
+        
+        ui_manager_guard.take()
+    };
+    
+    if let Some(mut ui_manager) = ui_manager {
+        let area_char = area_key.chars().next().unwrap_or('q');
+        let result = ui_manager.highlight_area(area_char).await
+            .map_err(|e| format!("Failed to highlight area: {}", e));
+        
+        // Put the UI manager back
+        let mut ui_manager_guard = ui_manager_state.lock()
+            .map_err(|e| format!("Failed to lock UI manager: {}", e))?;
+        *ui_manager_guard = Some(ui_manager);
+        
+        result
+    } else {
+        Err("UI manager not initialized".to_string())
+    }
+}
+
+/// Clear area highlighting
+#[tauri::command]
+pub async fn clear_area_highlight(
+    _app_handle: AppHandle,
+    ui_manager_state: State<'_, UIManagerState>,
+) -> std::result::Result<(), String> {
+    debug!("Tauri command: clear_area_highlight");
+    
+    // Extract the UI manager from the state without holding the lock across await
+    let ui_manager = {
+        let mut ui_manager_guard = ui_manager_state.lock()
+            .map_err(|e| format!("Failed to lock UI manager: {}", e))?;
+        
+        ui_manager_guard.take()
+    };
+    
+    if let Some(mut ui_manager) = ui_manager {
+        let result = ui_manager.clear_area_highlight().await
+            .map_err(|e| format!("Failed to clear area highlight: {}", e));
         
         // Put the UI manager back
         let mut ui_manager_guard = ui_manager_state.lock()
@@ -269,6 +350,16 @@ pub async fn get_grid_cell_position(
     } else {
         Err("UI manager not initialized".to_string())
     }
+}
+
+/// Test command to directly show grid overlay with default settings
+#[tauri::command]
+pub async fn test_show_grid() -> std::result::Result<String, String> {
+    info!("🧪 Tauri command: test_show_grid");
+    
+    // This is a simple test command that you can call from the frontend
+    info!("✅ Test grid overlay command called successfully");
+    Ok("Test command executed successfully!".to_string())
 }
 
 /// Request accessibility permissions (macOS specific)

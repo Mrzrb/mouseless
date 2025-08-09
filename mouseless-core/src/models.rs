@@ -115,11 +115,12 @@ impl Default for GridConfig {
 }
 
 /// Area definition for area mode
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Area {
-    pub id: u8,
-    pub bounds: ScreenBounds,
     pub key: char,
+    pub bounds: ScreenBounds,
+    pub center: Position,
+    pub label: String,
 }
 
 /// Prediction target for AI mode
@@ -197,6 +198,7 @@ pub enum Action {
     ActivateMode(InteractionMode),
     DeactivateMode,
     ToggleSpeed,
+    HighlightArea(char),
     Exit,
     NoAction,
 }

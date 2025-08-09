@@ -83,14 +83,14 @@
     - _Requirements: 2.2, 2.3, 2.5, 9.3_
 
 - [ ] 7. Build area mode navigation
-  - [ ] 7.1 Implement 9-area screen division
-    - Calculate screen areas using Q/W/E/A/S/D/Z/X/C mapping
-    - Create area boundary calculations for different screen sizes
-    - Handle multi-monitor area division logic
-    - Add visual area indicators with overlay rendering
+  - [x] 7.1 Implement 9-area screen division
+    - [x] Calculate screen areas using Q/W/E/A/S/D/Z/X/C mapping
+    - [x] Create area boundary calculations for different screen sizes
+    - [x] Handle multi-monitor area division logic (basic implementation)
+    - [x] Add visual area indicators with overlay rendering
     - _Requirements: 3.1, 3.5_
 
-  - [ ] 7.2 Add area combination navigation
+  - [x] 7.2 Add area combination navigation
     - Implement Q+E style combination key handling
     - Calculate intersection points between areas
     - Add visual feedback for area highlighting

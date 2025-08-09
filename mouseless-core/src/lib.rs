@@ -17,6 +17,7 @@ pub mod mode;
 pub mod basic_mode;
 pub mod grid;
 pub mod grid_mode;
+pub mod area_mode;
 
 #[cfg(test)]
 pub mod integration_tests;
@@ -34,6 +35,7 @@ pub use mode::*;
 pub use basic_mode::*;
 pub use grid::*;
 pub use grid_mode::*;
+pub use area_mode::*;
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

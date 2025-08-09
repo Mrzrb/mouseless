@@ -37,7 +37,10 @@ pub fn run() {
             tauri_commands::hide_activation_indicator,
             tauri_commands::check_accessibility_permissions,
             tauri_commands::request_accessibility_permissions,
-            tauri_commands::get_grid_cell_position
+            tauri_commands::get_grid_cell_position,
+            tauri_commands::test_show_grid,
+            tauri_commands::highlight_area,
+            tauri_commands::clear_area_highlight
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -46,19 +49,27 @@ pub fn run() {
 fn setup_app(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
     
+    info!("🚀 Starting Tauri application setup...");
+    
     // Initialize UI Manager
+    info!("📱 Initializing UI Manager...");
     let ui_manager = UIManager::new(app_handle.clone())?;
     app.manage(Arc::new(Mutex::new(Some(ui_manager))));
+    info!("✅ UI Manager initialized and managed");
     
-    // Hide the main window initially (we'll use overlay windows)
+    // Show the main window for testing and control
     if let Some(main_window) = app.get_webview_window("main") {
-        main_window.hide()?;
+        main_window.show()?;
+        main_window.set_title("Mouseless - 网格模式测试")?;
+        info!("🪟 Main window shown");
+    } else {
+        warn!("⚠️ Main window not found");
     }
     
     // Check accessibility permissions on startup
     check_macos_permissions(&app_handle);
     
-    info!("Tauri application setup complete");
+    info!("🎉 Tauri application setup complete");
     Ok(())
 }
 

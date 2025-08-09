@@ -15,14 +15,17 @@ pub struct UIManager {
 
 impl UIManager {
     pub fn new(app_handle: AppHandle) -> Result<Self> {
-        info!("Initializing UI Manager");
+        info!("🔧 Initializing UI Manager");
         
-        Ok(Self {
+        let ui_manager = Self {
             app_handle,
             overlay_windows: HashMap::new(),
             current_grid_manager: None,
             mode_manager: None,
-        })
+        };
+        
+        info!("✅ UI Manager created successfully");
+        Ok(ui_manager)
     }
     
     /// Set the mode manager for grid mode integration
@@ -32,7 +35,7 @@ impl UIManager {
     
     /// Show grid overlay with configurable grid settings
     pub async fn show_grid_overlay(&mut self, grid_config: GridConfig) -> Result<()> {
-        info!("Showing grid overlay with {} rows and {} columns", 
+        info!("🎯 Showing grid overlay with {} rows and {} columns", 
               grid_config.rows, grid_config.columns);
         
         // Close existing grid overlay if it exists
@@ -60,20 +63,18 @@ impl UIManager {
             false, // not resizable
         ).await?;
         
-        // Prepare grid data for frontend
+        // Focus the window so it can receive keyboard events
+        window.set_focus().map_err(|e| MouselessError::SystemError(
+            std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to focus overlay window: {}", e))
+        ))?;
+        
+        // Prepare grid data for frontend with animation settings
+        let cells = grid_manager.get_cells();
+        info!("Grid manager created {} cells", cells.len());
+        
         let grid_data = json!({
             "config": grid_config,
-            "cells": grid_manager.get_cells(),
-            "screen_bounds": {
-                "width": screen_bounds.width,
-                "height": screen_bounds.height
-            }
-        });
-        
-        // Send grid configuration to the frontend with animation settings
-        let enhanced_grid_data = json!({
-            "config": grid_config,
-            "cells": grid_manager.get_cells(),
+            "cells": cells,
             "screen_bounds": {
                 "width": screen_bounds.width,
                 "height": screen_bounds.height
@@ -85,9 +86,18 @@ impl UIManager {
             }
         });
         
-        window.emit("configure-grid", &enhanced_grid_data)
+        debug!("Sending grid data: {}", serde_json::to_string_pretty(&grid_data).unwrap_or_default());
+        
+        // Send grid configuration to the overlay window
+        window.emit("configure-grid", &grid_data)
             .map_err(|e| MouselessError::SystemError(
                 std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to configure grid: {}", e))
+            ))?;
+            
+        // Also emit to all windows to ensure the event is received
+        self.app_handle.emit("configure-grid", &grid_data)
+            .map_err(|e| MouselessError::SystemError(
+                std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to broadcast grid config: {}", e))
             ))?;
         
         // Store the grid manager for later use and sync with mode manager
@@ -102,12 +112,113 @@ impl UIManager {
         Ok(())
     }
     
+    /// Highlight a specific area in the area overlay
+    pub async fn highlight_area(&mut self, area_key: char) -> Result<()> {
+        info!("🎯 Highlighting area: {}", area_key.to_uppercase());
+        
+        if let Some(window) = self.overlay_windows.get("area") {
+            let highlight_data = json!({
+                "highlightedArea": area_key.to_string().to_lowercase(),
+                "timestamp": std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis()
+            });
+            
+            window.emit("highlight-area", &highlight_data)
+                .map_err(|e| MouselessError::SystemError(
+                    std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to highlight area: {}", e))
+                ))?;
+        } else {
+            warn!("Area overlay not found, cannot highlight area {}", area_key);
+        }
+        
+        Ok(())
+    }
+    
+    /// Clear area highlighting
+    pub async fn clear_area_highlight(&mut self) -> Result<()> {
+        info!("🎯 Clearing area highlight");
+        
+        if let Some(window) = self.overlay_windows.get("area") {
+            let clear_data = json!({
+                "highlightedArea": null,
+                "timestamp": std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis()
+            });
+            
+            window.emit("highlight-area", &clear_data)
+                .map_err(|e| MouselessError::SystemError(
+                    std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to clear area highlight: {}", e))
+                ))?;
+        }
+        
+        Ok(())
+    }
+
     /// Show area overlay with 9-region division
     pub async fn show_area_overlay(&mut self) -> Result<()> {
-        info!("Showing area overlay");
+        info!("🎯 Showing area overlay");
         
         // Close existing area overlay if it exists
         self.hide_overlay("area").await?;
+        
+        // Get screen dimensions (using default for now, could be improved with actual screen detection)
+        let screen_bounds = ScreenBounds {
+            id: 0,
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1080,
+            is_primary: true,
+        };
+        let screen_width = screen_bounds.width as f64;
+        let screen_height = screen_bounds.height as f64;
+        
+        info!("📐 Screen dimensions: {}x{}", screen_width, screen_height);
+        
+        // Calculate 9 areas
+        let area_width = screen_width / 3.0;
+        let area_height = screen_height / 3.0;
+        
+        let area_keys = [
+            ('q', 0, 0), ('w', 1, 0), ('e', 2, 0), // Top row
+            ('a', 0, 1), ('s', 1, 1), ('d', 2, 1), // Middle row
+            ('z', 0, 2), ('x', 1, 2), ('c', 2, 2), // Bottom row
+        ];
+        
+        let mut areas = Vec::new();
+        for (key, col, row) in area_keys.iter() {
+            let x = *col as f64 * area_width;
+            let y = *row as f64 * area_height;
+            
+            areas.push(json!({
+                "key": key.to_string(),
+                "bounds": {
+                    "x": x,
+                    "y": y,
+                    "width": area_width,
+                    "height": area_height
+                },
+                "center": {
+                    "x": x + area_width / 2.0,
+                    "y": y + area_height / 2.0
+                },
+                "label": key.to_uppercase().to_string()
+            }));
+        }
+        
+        let area_data = json!({
+            "areas": areas,
+            "screen_bounds": {
+                "width": screen_width,
+                "height": screen_height
+            }
+        });
+        
+        info!("📋 Area data created with {} areas", areas.len());
         
         // Create area overlay window
         let window = self.create_overlay_window(
@@ -119,11 +230,12 @@ impl UIManager {
         ).await?;
         
         // Send area configuration to the frontend
-        window.emit("configure-area", &json!({}))
+        window.emit("configure-area", &area_data)
             .map_err(|e| MouselessError::SystemError(
                 std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to configure area: {}", e))
             ))?;
         
+        info!("✅ Area overlay configured and displayed");
         self.overlay_windows.insert("area".to_string(), window);
         Ok(())
     }
@@ -224,8 +336,9 @@ impl UIManager {
         .transparent(transparent)
         .always_on_top(always_on_top)
         .resizable(resizable)
-        .skip_taskbar(true)
-        .visible(false); // Start hidden, show after configuration
+        .skip_taskbar(false) // Allow in taskbar so it can receive focus
+        .visible(false) // Start hidden, show after configuration
+        .focused(true); // Request focus when shown
         
         // macOS specific settings for overlay windows
         #[cfg(target_os = "macos")]

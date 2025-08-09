@@ -10,6 +10,7 @@ use crate::{
     traits::{ModeController, KeyBindings},
     basic_mode::BasicMode,
     grid_mode::GridMode,
+    area_mode::AreaMode,
 };
 
 /// Maximum number of modes to keep in history
@@ -52,6 +53,9 @@ pub struct ModeManager {
     
     /// Grid mode implementation
     grid_mode: Arc<Mutex<GridMode>>,
+    
+    /// Area mode implementation
+    area_mode: Arc<Mutex<AreaMode>>,
 }
 
 impl ModeManager {
@@ -69,6 +73,7 @@ impl ModeManager {
             hold_state: Arc::new(Mutex::new(false)),
             basic_mode: Arc::new(Mutex::new(BasicMode::new())),
             grid_mode: Arc::new(Mutex::new(GridMode::new())),
+            area_mode: Arc::new(Mutex::new(AreaMode::new())),
         }
     }
     
@@ -207,6 +212,22 @@ impl ModeManager {
             false
         }
     }
+    
+    /// Set screen dimensions for area mode
+    pub fn set_area_screen_dimensions(&self, width: f64, height: f64) {
+        if let Ok(mut area_mode) = self.area_mode.lock() {
+            area_mode.set_screen_dimensions(width, height);
+        }
+    }
+    
+    /// Get current areas for area mode
+    pub fn get_current_areas(&self) -> Vec<crate::models::Area> {
+        if let Ok(area_mode) = self.area_mode.lock() {
+            area_mode.get_areas()
+        } else {
+            Vec::new()
+        }
+    }
 }
 
 #[async_trait]
@@ -227,6 +248,11 @@ impl ModeController for ModeManager {
                         grid_mode.deactivate();
                     }
                 }
+                InteractionMode::Area => {
+                    if let Ok(mut area_mode) = self.area_mode.lock() {
+                        area_mode.deactivate();
+                    }
+                }
                 _ => {} // Other modes don't need special deactivation yet
             }
         }
@@ -236,6 +262,11 @@ impl ModeController for ModeManager {
             InteractionMode::Grid => {
                 if let Ok(mut grid_mode) = self.grid_mode.lock() {
                     grid_mode.activate();
+                }
+            }
+            InteractionMode::Area => {
+                if let Ok(mut area_mode) = self.area_mode.lock() {
+                    area_mode.activate();
                 }
             }
             _ => {} // Other modes don't need special activation yet
@@ -266,6 +297,11 @@ impl ModeController for ModeManager {
                 InteractionMode::Grid => {
                     if let Ok(mut grid_mode) = self.grid_mode.lock() {
                         grid_mode.deactivate();
+                    }
+                }
+                InteractionMode::Area => {
+                    if let Ok(mut area_mode) = self.area_mode.lock() {
+                        area_mode.deactivate();
                     }
                 }
                 _ => {} // Other modes don't need special deactivation yet
@@ -301,9 +337,14 @@ impl ModeController for ModeManager {
                 }
             }
             Some(InteractionMode::Area) => {
-                // Area mode - for now, fall back to basic input
-                // TODO: Implement area-specific input handling in future tasks
-                self.process_basic_input(input.clone())?
+                // Area mode - use area-specific input handling
+                if let Ok(mut area_mode) = self.area_mode.lock() {
+                    let bindings = self.get_key_bindings();
+                    area_mode.process_input(input.clone(), &bindings)?
+                } else {
+                    warn!("Failed to acquire area mode lock, falling back to basic input");
+                    self.process_basic_input(input.clone())?
+                }
             }
             Some(InteractionMode::Prediction) => {
                 // Prediction mode - for now, fall back to basic input
