@@ -1,137 +1,136 @@
-# Requirements Document
+# 需求文档
 
-## Introduction
+## 简介
 
-This document outlines the requirements for developing a Rust-based keyboard mouse control tool, inspired by the Mouseless application. The tool will enable users to control mouse operations entirely through keyboard inputs, helping to reduce wrist strain and improve productivity for users who prefer keyboard-centric workflows.
+本文档概述了开发基于 Rust 的键盘鼠标控制工具的需求，该工具受 Mouseless 应用程序启发。该工具将使用户能够完全通过键盘输入控制鼠标操作，帮助减少手腕疲劳并提高偏好键盘中心工作流程的用户的生产力。
 
-The application will provide multiple interaction modes including basic cursor movement, grid-based positioning, and area-based navigation, all while maintaining cross-platform compatibility and high performance through Rust's system-level capabilities.
+该应用程序将提供多种交互模式，包括基本光标移动、基于网格的定位和基于区域的导航，同时通过 Rust 的系统级功能保持跨平台兼容性和高性能。
 
-## Requirements
+## 需求
 
-### Requirement 1
+### 需求 1
 
-**User Story:** As a computer user experiencing wrist pain from mouse usage, I want to control my mouse cursor using keyboard keys, so that I can reduce physical strain while maintaining productivity.
+**用户故事：** 作为一个因使用鼠标而感到手腕疼痛的计算机用户，我希望使用键盘按键控制鼠标光标，以便在保持生产力的同时减少身体疲劳。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the user activates the tool THEN the system SHALL capture keyboard input for mouse control
-2. WHEN the user presses movement keys (I/K/J/L) THEN the system SHALL move the mouse cursor in the corresponding direction
-3. WHEN the user presses click keys (N for left click, M for right click) THEN the system SHALL execute the corresponding mouse click at the current cursor position
-4. WHEN the user presses the hold key (B) THEN the system SHALL toggle mouse button hold state
-5. WHEN the user presses scroll keys (U/O for vertical, Y/P for horizontal) THEN the system SHALL scroll in the corresponding direction
+1. 当用户激活工具时，系统应捕获键盘输入以进行鼠标控制
+2. 当用户按下移动键（I/K/J/L）时，系统应将鼠标光标向相应方向移动
+3. 当用户按下点击键（N 为左键点击，M 为右键点击）时，系统应在当前光标位置执行相应的鼠标点击
+4. 当用户按下保持键（B）时，系统应切换鼠标按钮保持状态
+5. 当用户按下滚动键（U/O 为垂直滚动，Y/P 为水平滚动）时，系统应向相应方向滚动
 
-### Requirement 2
+### 需求 2
 
-**User Story:** As a power user, I want to quickly position my mouse cursor to specific screen locations using a grid system, so that I can efficiently navigate to precise locations without multiple movement commands.
+**用户故事：** 作为高级用户，我希望使用网格系统快速将鼠标光标定位到屏幕的特定位置，以便能够高效地导航到精确位置而无需多次移动命令。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the user activates grid mode THEN the system SHALL display a configurable grid overlay on the screen
-2. WHEN the user types a two-key combination shown in a grid cell THEN the system SHALL move the mouse cursor to the center of that grid cell
-3. WHEN the grid is active THEN the system SHALL show visual indicators for each grid cell with their corresponding key combinations
-4. IF the user configures grid size THEN the system SHALL adjust the number of grid cells accordingly
-5. WHEN the user exits grid mode THEN the system SHALL hide the grid overlay and return to normal mode
+1. 当用户激活网格模式时，系统应在屏幕上显示可配置的网格覆盖层
+2. 当用户输入网格单元格中显示的双键组合时，系统应将鼠标光标移动到该网格单元格的中心
+3. 当网格处于活动状态时，系统应为每个网格单元格显示视觉指示器及其相应的按键组合
+4. 如果配置文件指定了自定义网格大小，系统应相应调整网格单元格的数量
+5. 如果用户有多个显示器，系统应在所有连接的显示器上同时显示网格覆盖层
+6. 当用户退出网格模式时，系统应隐藏所有屏幕上的网格覆盖层并返回正常模式
 
-### Requirement 3
+### 需求 3
 
-**User Story:** As a user who is not familiar with complex key combinations, I want to use a simple area-based navigation system, so that I can quickly move my cursor to general screen regions using intuitive key mappings.
+**用户故事：** 作为用户，我希望通过配置文件自定义激活方法和按键绑定，以便能够将工具适配到我的个人工作流程并避免与其他应用程序冲突，而无需 GUI。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the user activates area mode THEN the system SHALL divide the screen into 9 distinct areas
-2. WHEN the user presses area keys (Q/W/E/A/S/D/Z/X/C) THEN the system SHALL move the mouse cursor to the center of the corresponding area
-3. WHEN the user presses combination keys (e.g., Q+E) THEN the system SHALL move the cursor to the intersection or highlighted area between the two regions
-4. WHEN area mode is active THEN the system SHALL provide visual feedback showing the 9 areas and their key mappings
-5. IF the user has multiple monitors THEN the system SHALL handle area division across all connected displays
+1. 当应用程序启动时，系统应默认从 `~/.mouseless.toml` 读取配置
+2. 当用户指定自定义配置路径时，系统应支持从指定文件加载配置
+3. 当配置文件包含激活键设置时，系统应支持绑定到 CapsLock、Ctrl、Shift、Command 或 Option 键
+4. 当配置文件指定双击激活时，系统应要求两次快速按键来激活
+5. 当用户在配置文件中修改按键绑定时，系统应在下次启动或配置重新加载时应用这些更改
+6. 当配置文件包含速度设置时，系统应相应调整光标移动速度
+7. 当用户按下速度切换键（通过配置可配置）时，系统应在快速和慢速移动模式之间切换
+8. 如果配置文件缺失，系统应创建具有合理默认值的默认配置文件
+9. 如果配置文件包含无效设置，系统应记录错误并对无效条目回退到默认值
 
-### Requirement 4
+### 需求 4
 
-**User Story:** As a user working with multiple monitors, I want to quickly switch my mouse cursor between different screens, so that I can efficiently work across my multi-monitor setup.
+**用户故事：** 作为用户，我希望通过 TOML 配置文件管理所有应用程序设置，以便能够版本控制我的设置、共享配置，并避免依赖 GUI 设置面板。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the user presses screen keys (1/2/3) THEN the system SHALL move the mouse cursor to the center of the corresponding monitor
-2. IF the system detects multiple monitors THEN the system SHALL automatically map keys to available displays
-3. WHEN only one monitor is connected THEN the system SHALL disable multi-screen functionality
-4. IF more than 3 monitors are connected THEN the system SHALL map the first 3 monitors to keys 1, 2, and 3
-5. WHEN switching screens THEN the system SHALL provide visual feedback indicating the target screen
+1. 当应用程序启动时，系统应在 `~/.mouseless.toml` 查找配置
+2. 当配置文件存在时，系统应使用 TOML 格式解析和验证所有设置
+3. 当配置文件包含网格设置时，系统应应用自定义网格大小、颜色和按键映射
+4. 当配置文件包含区域模式设置时，系统应应用自定义区域划分和按键绑定
+5. 当配置文件包含动画设置时，系统应应用自定义动画速度、缓动曲线和视觉效果
+6. 当配置文件包含预测设置时，系统应应用机器学习模型偏好和预测阈值
+7. 当用户向进程发送 SIGHUP 信号时，系统应重新加载配置文件而不重启
+8. 如果配置文件有语法错误，系统应记录详细的错误消息（包含行号）并继续使用之前的有效配置
+9. 当系统创建默认配置时，系统应包含解释所有可用选项的全面注释
+10. 当配置重新加载时，系统应立即应用更改而不中断活动的鼠标控制会话
 
-### Requirement 5
+### 需求 5
 
-**User Story:** As a user, I want to customize the activation method and key bindings, so that I can adapt the tool to my personal workflow and avoid conflicts with other applications.
+**用户故事：** 作为用户，我希望能够轻松启用和禁用鼠标控制系统，以便在需要时能够快速返回正常的鼠标操作而不受干扰。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the user configures activation keys THEN the system SHALL support binding to CapsLock, Ctrl, Shift, Command, or Option keys
-2. WHEN the user sets double-click activation THEN the system SHALL require two rapid key presses to activate
-3. IF the user customizes key bindings THEN the system SHALL save and load these preferences
-4. WHEN the user changes speed settings THEN the system SHALL adjust cursor movement velocity accordingly
-5. WHEN the user presses the speed toggle key (F) THEN the system SHALL switch between fast and slow movement modes
+1. 当用户按下退出键（Esc 或 Space，可通过配置文件配置）时，系统应停用鼠标控制模式
+2. 当使用 Space 退出时，系统不应在活动应用程序中生成空格字符
+3. 当系统停用时，系统应恢复正常的键盘输入行为
+4. 如果系统遇到错误，系统应自动停用并恢复正常输入
+5. 当系统处于非活动状态时，系统应消耗最少的系统资源
 
-### Requirement 6
+### 需求 6
 
-**User Story:** As a user, I want to easily enable and disable the mouse control system, so that I can quickly return to normal mouse operation when needed without interference.
+**用户故事：** 作为 macOS 用户，我希望该工具能够可靠地与 macOS 系统功能和安全要求配合工作，以便能够在我的 Mac 工作流程中无缝使用它。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the user presses the exit key (Esc or Space) THEN the system SHALL deactivate mouse control mode
-2. WHEN Space is used to exit THEN the system SHALL NOT generate a space character in the active application
-3. WHEN the system is deactivated THEN the system SHALL restore normal keyboard input behavior
-4. IF the system encounters an error THEN the system SHALL automatically deactivate and restore normal input
-5. WHEN the system is inactive THEN the system SHALL consume minimal system resources
+1. 当应用程序在 macOS 上运行时，系统应提供完整的鼠标控制功能
+2. 当应用程序请求辅助功能权限时，系统应引导用户通过 macOS 辅助功能设置
+3. 如果系统缺少所需权限，系统应显示启用辅助功能访问的清晰说明
+4. 当应用程序与 macOS 集成时，系统应尊重系统级键盘快捷键，不干扰基本的 Mac 功能
+5. 当应用程序启动时，系统应验证 macOS 兼容性和所需权限
 
-### Requirement 7
+### 需求 7
 
-**User Story:** As a macOS user, I want the tool to work reliably with macOS system features and security requirements, so that I can use it seamlessly in my Mac workflow.
+**用户故事：** 作为频繁使用计算机的用户，我希望系统能够学习我的使用模式并预测我下一步可能点击的位置，以便能够用更少的按键更高效地导航。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the application runs on macOS THEN the system SHALL provide full mouse control functionality
-2. WHEN the application requests accessibility permissions THEN the system SHALL guide the user through macOS accessibility settings
-3. IF the system lacks required permissions THEN the system SHALL display clear instructions for enabling accessibility access
-4. WHEN the application integrates with macOS THEN the system SHALL respect system-level keyboard shortcuts and not interfere with essential Mac functions
-5. WHEN the application starts THEN the system SHALL verify macOS compatibility and required permissions
+1. 当用户激活预测模式时，系统应分析当前屏幕内容并高亮显示可能的点击目标
+2. 当系统有使用历史时，系统应优先考虑经常访问的区域和应用程序
+3. 当系统检测到常见的 UI 模式时，系统应预测典型的交互流程（例如，表单字段、对话框按钮）
+4. 如果用户在特定应用程序中，系统应使用特定于应用程序的预测模型
+5. 当显示预测目标时，系统应显示编号或字母快捷键以便快速选择（可通过配置文件配置）
+6. 当用户选择预测目标时，系统应将光标移动到该位置并可选择性地执行点击
+7. 如果预测不正确，系统应从用户纠正中学习并改进未来的预测
+8. 当系统缺乏足够数据时，系统应回退到基本启发式方法（按钮中心、文本字段开始等）
+9. 当配置文件指定预测设置时，系统应应用自定义置信度阈值和目标高亮偏好
 
-### Requirement 8
+### 需求 8
 
-**User Story:** As a frequent computer user, I want the system to learn my usage patterns and predict where I'm likely to click next, so that I can navigate more efficiently with fewer keystrokes.
+**用户故事：** 作为重视美观和直观界面的用户，我希望鼠标控制工具提供美丽、流畅的动画和清晰的视觉反馈，以便体验感觉精致和专业。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the user activates prediction mode THEN the system SHALL analyze current screen content and highlight likely click targets
-2. WHEN the system has usage history THEN the system SHALL prioritize frequently accessed areas and applications
-3. WHEN the system detects common UI patterns THEN the system SHALL predict typical interaction flows (e.g., form fields, dialog buttons)
-4. IF the user is in a specific application THEN the system SHALL use application-specific prediction models
-5. WHEN prediction targets are displayed THEN the system SHALL show numbered or lettered shortcuts for quick selection
-6. WHEN the user selects a predicted target THEN the system SHALL move the cursor to that location and optionally perform the click
-7. IF predictions are incorrect THEN the system SHALL learn from user corrections and improve future predictions
-8. WHEN the system lacks sufficient data THEN the system SHALL fall back to basic heuristics (center of buttons, start of text fields, etc.)
+1. 当光标移动时，系统应显示流畅的缓动动画，速度曲线可通过配置文件配置
+2. 当模式激活时，系统应显示优雅的过渡动画（淡入、缩放、滑动效果），时间可通过配置文件配置
+3. 当网格或区域覆盖层出现时，系统应使用微妙的入场动画（涟漪效果、顺序显示），效果可通过配置文件配置
+4. 当目标被高亮显示时，系统应使用脉冲发光效果或呼吸动画来吸引注意力
+5. 当用户悬停在交互元素上时，系统应通过微动画提供即时视觉反馈
+6. 当显示预测目标时，系统应使用基于置信度的视觉样式（不透明度、大小、颜色强度）
+7. 当发生错误时，系统应显示轻柔的摇摆动画或颜色过渡来指示问题
+8. 如果系统处于深色模式，系统应使用适当的深色主题颜色和降低的亮度来适配所有 UI 元素
+9. 当显示覆盖层时，系统应使用玻璃态或新拟态设计原则来实现现代美学
+10. 当工具激活时，系统应显示微妙的系统级视觉指示器（菜单栏图标变化、屏幕边缘发光）
 
-### Requirement 9
+### 需求 9
 
-**User Story:** As a user who values aesthetic and intuitive interfaces, I want the mouse control tool to provide beautiful, smooth animations and clear visual feedback, so that the experience feels polished and professional.
+**用户故事：** 作为关心系统性能的用户，我希望鼠标控制工具对系统资源的影响最小，以便不会拖慢我的其他应用程序。
 
-#### Acceptance Criteria
+#### 验收标准
 
-1. WHEN the cursor moves THEN the system SHALL display smooth easing animations with customizable speed curves
-2. WHEN modes are activated THEN the system SHALL show elegant transition animations (fade-in, scale, slide effects)
-3. WHEN grid or area overlays appear THEN the system SHALL use subtle entrance animations (ripple effect, sequential reveal)
-4. WHEN targets are highlighted THEN the system SHALL use pulsing glow effects or breathing animations to draw attention
-5. WHEN the user hovers over interactive elements THEN the system SHALL provide immediate visual feedback with micro-animations
-6. WHEN prediction targets are shown THEN the system SHALL use confidence-based visual styling (opacity, size, color intensity)
-7. WHEN errors occur THEN the system SHALL display gentle shake animations or color transitions to indicate issues
-8. IF the system is in dark mode THEN the system SHALL adapt all UI elements with appropriate dark theme colors and reduced brightness
-9. WHEN overlays are displayed THEN the system SHALL use glassmorphism or neumorphism design principles for modern aesthetics
-10. WHEN the tool is activated THEN the system SHALL show a subtle system-wide visual indicator (menu bar icon change, screen edge glow)
-
-### Requirement 10
-
-**User Story:** As a user concerned about system performance, I want the mouse control tool to have minimal impact on system resources, so that it doesn't slow down my other applications.
-
-#### Acceptance Criteria
-
-1. WHEN the application is running THEN the system SHALL consume less than 50MB of RAM
-2. WHEN the application is idle THEN the system SHALL use less than 1% CPU on average
-3. WHEN processing input events THEN the system SHALL respond within 10 milliseconds
-4. IF the system detects high resource usage THEN the system SHALL log performance metrics
-5. WHEN the application exits THEN the system SHALL properly clean up all allocated resources
+1. 当应用程序运行时，系统应消耗少于 50MB 的内存
+2. 当应用程序空闲时，系统应平均使用少于 1% 的 CPU
+3. 当处理输入事件时，系统应在 10 毫秒内响应
+4. 如果系统检测到高资源使用，系统应记录性能指标
+5. 当应用程序退出时，系统应正确清理所有分配的资源

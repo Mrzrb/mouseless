@@ -2,6 +2,11 @@ import React from 'react'
 import { motion } from 'framer-motion'
 
 const ActivationIndicator: React.FC = () => {
+  //TODO: Make indicator position configurable
+  //TODO: Add different indicator styles (menu bar, screen edge glow, etc.)
+  //TODO: Show current mode information in the indicator
+  //TODO: Add click-to-configure functionality
+  
   return (
     <motion.div
       className="fixed top-4 right-4 z-50"

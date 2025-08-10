@@ -28,6 +28,10 @@ const AreaOverlay: React.FC<AreaOverlayProps> = ({
   showLabels = true, 
   opacity = 0.8,
   highlightedArea,
+  //TODO: Add support for area combination visualization (Q+E style)
+  //TODO: Implement timeout-based area selection
+  //TODO: Add configurable area colors and styling
+  //TODO: Add multi-monitor area support
   combinationKeys = []
 }) => {
   // Default 9 areas if none provided (for testing)

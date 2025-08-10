@@ -42,7 +42,9 @@ pub fn run() {
             tauri_commands::highlight_area,
             tauri_commands::clear_area_highlight,
             tauri_commands::move_mouse_to_position,
-            tauri_commands::move_mouse_to_grid_cell
+            tauri_commands::move_mouse_to_grid_cell,
+            tauri_commands::load_settings,
+            tauri_commands::save_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -53,6 +55,12 @@ fn setup_app(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error
     
     info!("🚀 Starting Tauri application setup...");
     
+    //TODO: Initialize ConfigManager and load ~/.mouseless.toml
+    //TODO: Set up SIGHUP signal handler for configuration reload
+    //TODO: Initialize InputHandler with global hotkey registration
+    //TODO: Initialize ModeManager with configuration-driven settings
+    //TODO: Set up inter-component communication channels
+    
     // Initialize UI Manager
     info!("📱 Initializing UI Manager...");
     let ui_manager = UIManager::new(app_handle.clone())?;
@@ -62,7 +70,7 @@ fn setup_app(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error
     // Show the main window for testing and control
     if let Some(main_window) = app.get_webview_window("main") {
         main_window.show()?;
-        main_window.set_title("Mouseless - 网格模式测试")?;
+        main_window.set_title("Mouseless - 设置")?;
         info!("🪟 Main window shown");
     } else {
         warn!("⚠️ Main window not found");
@@ -80,7 +88,9 @@ fn check_macos_permissions(_app_handle: &AppHandle) {
     {
         use std::process::Command;
         
-        // Check if accessibility permissions are granted
+        //TODO: Implement more robust accessibility permission checking
+        //TODO: Use proper macOS APIs instead of osascript
+        //TODO: Provide detailed permission status information
         let output = Command::new("osascript")
             .arg("-e")
             .arg("tell application \"System Events\" to get name of every process")
@@ -92,7 +102,8 @@ fn check_macos_permissions(_app_handle: &AppHandle) {
             }
             Err(_) => {
                 warn!("Accessibility permissions may not be granted");
-                // We'll handle this in the UI with user guidance
+                //TODO: Show user-friendly permission request dialog
+                //TODO: Provide step-by-step permission setup guide
             }
         }
     }

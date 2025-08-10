@@ -7,6 +7,12 @@ interface PredictionOverlayProps {
 }
 
 const PredictionOverlay: React.FC<PredictionOverlayProps> = ({ targets }) => {
+  //TODO: Implement keyboard shortcuts for prediction target selection
+  //TODO: Add numbered/lettered labels for quick selection
+  //TODO: Implement confidence-based animations (pulsing, breathing effects)
+  //TODO: Add target type-specific styling (button, link, text field, etc.)
+  //TODO: Implement target filtering based on user preferences
+  
   const getConfidenceClass = (confidence: number) => {
     if (confidence >= 0.8) return 'prediction-high'
     if (confidence >= 0.5) return 'prediction-medium'

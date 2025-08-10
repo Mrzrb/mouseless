@@ -200,11 +200,12 @@ impl InputHandler {
     pub async fn start_event_loop(&self) -> InputResult<()> {
         info!("Started input event loop (simplified implementation)");
 
-        // For now, this is a placeholder implementation
-        // In a real implementation, you would:
-        // 1. Create a proper event receiver from the global-hotkey crate
-        // 2. Set up the event processing loop
-        // 3. Handle hotkey events and convert them to actions
+        //TODO: Implement proper global hotkey event loop
+        //TODO: Create a proper event receiver from the global-hotkey crate
+        //TODO: Set up the event processing loop with tokio
+        //TODO: Handle hotkey events and convert them to actions
+        //TODO: Integrate with the action channel for sending processed events
+        //TODO: Handle errors and reconnection logic
 
         Ok(())
     }

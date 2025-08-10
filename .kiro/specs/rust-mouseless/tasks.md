@@ -1,210 +1,209 @@
-# Implementation Plan
+# 实现计划
 
-- [x] 1. Set up project structure and core interfaces
-  - Create Cargo workspace with main application and library crates
-  - Define core traits for InputProcessor, MouseOperations, ModeController, UIRenderer, and PredictionModel
-  - Set up basic error handling with thiserror and custom error types
-  - Configure logging with tracing and structured output
-  - _Requirements: 7.5, 8.5_
+- [x] 1. 设置项目结构和核心接口
+  - 使用主应用程序和库 crate 创建 Cargo workspace
+  - 为 InputProcessor、MouseOperations、ModeController、UIRenderer 和 PredictionModel 定义核心 trait
+  - 使用 thiserror 和自定义错误类型设置基本错误处理
+  - 使用 tracing 配置日志记录和结构化输出
+  - _需求: 6.5, 9.5_
 
-- [x] 2. Implement basic input handling system
-  - [x] 2.1 Create global hotkey registration and management
-    - Integrate global-hotkey crate for system-wide key capture
-    - Implement configurable activation keys (CapsLock, modifiers)
-    - Add double-click detection for activation trigger
-    - Write unit tests for hotkey registration and event processing
-    - _Requirements: 1.1, 5.1, 5.2_
+- [x] 2. 实现基本输入处理系统
+  - [x] 2.1 创建全局热键注册和管理
+    - 集成 global-hotkey crate 进行系统级按键捕获
+    - 实现可配置的激活键（CapsLock、修饰键）
+    - 添加激活触发器的双击检测
+    - 为热键注册和事件处理编写单元测试
+    - _需求: 1.1, 3.1, 3.2_
 
-  - [x] 2.2 Build key binding configuration system
-    - Create KeyBindings struct with serde serialization
-    - Implement configuration loading from JSON/TOML files
-    - Add validation for key binding conflicts and invalid combinations
-    - Write tests for configuration parsing and validation
-    - _Requirements: 5.3, 7.3_
+  - [x] 2.2 构建按键绑定配置系统
+    - 使用 serde 序列化创建 KeyBindings 结构
+    - 实现从 `~/.mouseless.toml` 文件加载配置
+    - 添加按键绑定冲突和无效组合的验证
+    - 为配置解析和验证编写测试
+    - _需求: 3.3, 4.2_
 
-- [ ] 3. Create mouse control foundation
-  - [x] 3.1 Implement basic mouse operations with enigo
-    - Set up enigo for mouse movement, clicking, and scrolling
-    - Create Position and ScreenBounds data structures
-    - Implement multi-monitor detection and screen mapping
-    - Add error handling for mouse operation failures
-    - _Requirements: 1.2, 1.3, 1.5, 4.1, 4.2_
+- [ ] 3. 创建鼠标控制基础
+  - [x] 3.1 使用 enigo 实现基本鼠标操作
+    - 设置 enigo 进行鼠标移动、点击和滚动
+    - 创建 Position 和 ScreenBounds 数据结构
+    - 实现多显示器检测和屏幕映射
+    - 为鼠标操作失败添加错误处理
+    - _需求: 1.2, 1.3, 1.5_
 
-  - [x] 3.2 Add smooth cursor movement animations
-    - Implement easing functions for natural movement curves
-    - Create configurable movement speeds (fast/slow modes)
-    - Add animation interpolation between start and end positions
-    - Write performance tests to ensure sub-10ms response times
-    - _Requirements: 1.2, 5.4, 5.5, 8.3_
+  - [x] 3.2 添加流畅的光标移动动画
+    - 实现自然移动曲线的缓动函数
+    - 创建可配置的移动速度（快/慢模式）
+    - 在起始和结束位置之间添加动画插值
+    - 编写性能测试以确保低于 10ms 的响应时间
+    - _需求: 1.2, 3.6, 3.7, 9.3_
 
-- [ ] 4. Build mode management system
-  - [x] 4.1 Create mode manager with state transitions
-    - Implement InteractionMode enum with Basic, Grid, Area, and Prediction variants
-    - Build ModeManager with thread-safe mode switching
-    - Add mode history tracking for undo functionality
-    - Create event system for mode change notifications
-    - _Requirements: 1.1, 6.1, 6.3_
+- [ ] 4. 构建模式管理系统
+  - [x] 4.1 创建带状态转换的模式管理器
+    - 实现包含基本、网格和预测变体的 InteractionMode 枚举
+    - 构建具有线程安全模式切换的 ModeManager
+    - 添加撤销功能的模式历史跟踪
+    - 创建模式更改通知的事件系统
+    - _需求: 1.1, 5.1, 5.3_
 
-  - [x] 4.2 Implement basic movement mode
-    - Handle I/K/J/L keys for directional cursor movement
-    - Add N/M keys for left/right mouse clicks
-    - Implement U/O/Y/P keys for scrolling operations
-    - Create B key for click-and-hold toggle functionality
-    - _Requirements: 1.2, 1.3, 1.4, 1.5_
+  - [x] 4.2 实现基本移动模式
+    - 处理 I/K/J/L 键进行方向光标移动
+    - 添加 N/M 键进行左/右鼠标点击
+    - 实现 U/O/Y/P 键进行滚动操作
+    - 创建 B 键进行点击保持切换功能
+    - _需求: 1.2, 1.3, 1.4, 1.5_
 
-- [x] 5. Integrate Tauri for UI overlays
-  - [x] 5.1 Set up Tauri application structure
-    - Initialize Tauri project with HTML/CSS/JavaScript frontend
-    - Configure window management for overlay creation
-    - Set up IPC communication between Rust backend and frontend
-    - Implement permission handling for macOS accessibility
-    - _Requirements: 7.1, 7.2, 7.3, 7.4_
+- [x] 5. 集成 Tauri 进行 UI 覆盖层
+  - [x] 5.1 设置 Tauri 应用程序结构
+    - 使用 HTML/CSS/JavaScript 前端初始化 Tauri 项目
+    - 配置覆盖层创建的窗口管理
+    - 设置 Rust 后端和前端之间的 IPC 通信
+    - 实现 macOS 辅助功能的权限处理
+    - _需求: 6.1, 6.2, 6.3, 6.4_
 
-  - [x] 5.2 Create basic overlay rendering system
-    - Build UIManager component with overlay window management
-    - Implement show/hide functionality for different overlay types
-    - Add basic styling with CSS for overlay appearance
-    - Create animation engine for smooth transitions
-    - _Requirements: 9.1, 9.2, 9.10_
+  - [x] 5.2 创建基本覆盖层渲染系统
+    - 构建具有覆盖层窗口管理的 UIManager 组件
+    - 实现不同覆盖层类型的显示/隐藏功能
+    - 使用 CSS 为覆盖层外观添加基本样式
+    - 创建流畅过渡的动画引擎
+    - _需求: 8.1, 8.2, 8.10_
 
-- [x] 6. Implement grid mode functionality
-  - [x] 6.1 Create configurable grid overlay
-    - Build grid calculation logic for screen division
-    - Generate two-key combinations for grid cell identification
-    - Implement grid size configuration (rows/columns)
-    - Add visual grid rendering with HTML/CSS
-    - _Requirements: 2.1, 2.4_
+- [x] 6. 实现网格模式功能
+  - [x] 6.1 创建可配置的网格覆盖层
+    - 构建屏幕划分的网格计算逻辑
+    - 生成网格单元格识别的双键组合
+    - 实现网格大小配置（行/列）
+    - 使用 HTML/CSS 添加视觉网格渲染
+    - _需求: 2.1, 2.4_
 
-  - [x] 6.2 Add grid interaction and navigation
-    - Handle two-key input sequences for grid cell selection
-    - Implement cursor movement to grid cell centers
-    - Add visual feedback for key press sequences
-    - Create smooth animations for grid appearance/disappearance
-    - _Requirements: 2.2, 2.3, 2.5, 9.3_
+  - [x] 6.2 添加网格交互和导航
+    - 处理网格单元格选择的双键输入序列
+    - 实现光标移动到网格单元格中心
+    - 为按键序列添加视觉反馈
+    - 创建网格出现/消失的流畅动画
+    - _需求: 2.2, 2.3, 2.6, 8.3_
 
-- [ ] 7. Build area mode navigation
-  - [x] 7.1 Implement 9-area screen division
-    - [x] Calculate screen areas using Q/W/E/A/S/D/Z/X/C mapping
-    - [x] Create area boundary calculations for different screen sizes
-    - [x] Handle multi-monitor area division logic (basic implementation)
-    - [x] Add visual area indicators with overlay rendering
-    - _Requirements: 3.1, 3.5_
+  - [ ] 6.3 添加多屏幕网格支持
+    - 实现跨所有连接显示器的网格覆盖层
+    - 为每个屏幕计算独立的网格单元格
+    - 添加屏幕间网格导航的视觉指示器
+    - 创建统一的按键映射系统用于多屏幕网格
+    - _需求: 2.5_
 
-  - [x] 7.2 Add area combination navigation
-    - Implement Q+E style combination key handling
-    - Calculate intersection points between areas
-    - Add visual feedback for area highlighting
-    - Create smooth cursor movement to area centers
-    - _Requirements: 3.2, 3.3, 3.4_
+- [ ] 7. 创建高级 UI 和动画
+  - [ ] 7.1 实现现代视觉效果
+    - 使用 CSS backdrop-filter 添加玻璃态样式
+    - 创建目标高亮的脉冲发光效果
+    - 实现预测目标的呼吸动画
+    - 添加模式激活的涟漪效果
+    - _需求: 8.4, 8.5, 8.9_
 
-- [ ] 8. Create advanced UI and animations
-  - [ ] 8.1 Implement modern visual effects
-    - Add glassmorphism styling with CSS backdrop-filter
-    - Create pulsing glow effects for target highlighting
-    - Implement breathing animations for prediction targets
-    - Add ripple effects for mode activation
-    - _Requirements: 9.4, 9.5, 9.9_
+  - [ ] 7.2 构建主题和自定义系统
+    - 创建支持明/暗模式的 ThemeManager
+    - 基于系统偏好实现颜色适配
+    - 添加不透明度和动画速度配置
+    - 构建移动可视化的光标轨迹效果
+    - _需求: 8.6, 8.8, 8.10_
 
-  - [ ] 8.2 Build theme and customization system
-    - Create ThemeManager with light/dark mode support
-    - Implement color adaptation based on system preferences
-    - Add opacity and animation speed configuration
-    - Build cursor trail effects for movement visualization
-    - _Requirements: 9.6, 9.8, 9.10_
+- [ ] 8. 开发智能预测系统
+  - [ ] 8.1 创建屏幕内容分析
+    - 集成 macOS 辅助功能 API 进行 UI 元素检测
+    - 实现按钮、链接和文本字段识别
+    - 构建当前应用程序的屏幕上下文分析
+    - 为检测到的元素添加置信度评分
+    - _需求: 7.1, 7.3, 7.4_
 
-- [ ] 9. Develop intelligent prediction system
-  - [ ] 9.1 Create screen content analysis
-    - Integrate macOS Accessibility API for UI element detection
-    - Implement button, link, and text field recognition
-    - Build screen context analysis for current application
-    - Add confidence scoring for detected elements
-    - _Requirements: 8.1, 8.3, 8.4_
+  - [ ] 8.2 构建使用模式跟踪
+    - 创建用于记录用户交互的 UsageTracker
+    - 实现使用历史的本地存储
+    - 添加特定于应用程序的模式识别
+    - 构建基于频率的目标优先级排序
+    - _需求: 7.2, 7.4, 7.7_
 
-  - [ ] 9.2 Build usage pattern tracking
-    - Create UsageTracker for recording user interactions
-    - Implement local storage for usage history
-    - Add application-specific pattern recognition
-    - Build frequency-based target prioritization
-    - _Requirements: 8.2, 8.4, 8.7_
+  - [ ] 8.3 实现预测目标可视化
+    - 为预测目标创建编号/字母快捷键
+    - 添加基于置信度的视觉样式（不透明度、大小、颜色）
+    - 实现目标选择和光标移动
+    - 构建预测准确性改进的反馈系统
+    - _需求: 7.5, 7.6, 7.7, 7.8, 7.9_
 
-  - [ ] 9.3 Implement prediction target visualization
-    - Create numbered/lettered shortcuts for predicted targets
-    - Add confidence-based visual styling (opacity, size, color)
-    - Implement target selection and cursor movement
-    - Build feedback system for prediction accuracy improvement
-    - _Requirements: 8.5, 8.6, 8.7, 8.8_
+- [ ] 9. 添加配置和自定义
+  - [ ] 9.1 构建 TOML 配置系统
+    - 创建包含所有配置选项的 AppConfig 结构
+    - 实现从 `~/.mouseless.toml` 的配置加载
+    - 添加配置验证和错误处理
+    - 实现 SIGHUP 信号的配置热重载
+    - _需求: 4.1, 4.2, 4.7, 4.8_
 
-- [ ] 10. Add configuration and customization
-  - [ ] 10.1 Build comprehensive settings system
-    - Create AppConfig structure with all configuration options
-    - Implement settings UI using Tauri's web frontend
-    - Add real-time configuration updates without restart
-    - Build configuration validation and error handling
-    - _Requirements: 5.3, 7.3_
+  - [ ] 9.2 创建默认配置生成
+    - 实现缺失配置文件时的默认配置创建
+    - 添加包含所有选项说明的全面注释
+    - 构建配置文件语法错误的详细错误报告
+    - 创建配置更改的实时应用而不中断会话
+    - _需求: 4.8, 4.9, 4.10_
 
-  - [ ] 10.2 Create user preferences management
-    - Implement activation method customization
-    - Add movement speed and animation preferences
-    - Build key binding customization interface
-    - Create import/export functionality for settings
-    - _Requirements: 5.1, 5.2, 5.4, 5.5_
+  - [ ] 9.3 实现配置驱动的功能
+    - 添加激活方法自定义（CapsLock、修饰键、双击）
+    - 实现移动速度和动画偏好配置
+    - 构建按键绑定自定义系统
+    - 添加网格、预测和动画设置的配置支持
+    - _需求: 3.3, 3.4, 3.5, 3.6, 3.7, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 11. Implement system integration
-  - [ ] 11.1 Add macOS-specific features
-    - Handle accessibility permission requests and guidance
-    - Integrate with macOS system preferences
-    - Add menu bar icon and system tray functionality
-    - Implement proper app lifecycle management
-    - _Requirements: 7.1, 7.2, 7.4, 7.5_
+- [ ] 10. 实现系统集成
+  - [ ] 10.1 添加 macOS 特定功能
+    - 处理辅助功能权限请求和指导
+    - 与 macOS 系统偏好集成
+    - 添加菜单栏图标和系统托盘功能
+    - 实现适当的应用程序生命周期管理
+    - _需求: 6.1, 6.2, 6.4, 6.5_
 
-  - [ ] 11.2 Create activation and deactivation system
-    - Implement clean activation/deactivation with visual feedback
-    - Add emergency exit functionality (Esc/Space keys)
-    - Build automatic deactivation on errors or system events
-    - Create system-wide visual indicators for active state
-    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+  - [ ] 10.2 创建激活和停用系统
+    - 实现带视觉反馈的清洁激活/停用
+    - 添加紧急退出功能（Esc/Space 键，可配置）
+    - 构建错误或系统事件时的自动停用
+    - 创建活动状态的系统级视觉指示器
+    - _需求: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 12. Performance optimization and testing
-  - [ ] 12.1 Optimize performance and resource usage
-    - Profile memory usage and optimize to stay under 50MB
-    - Ensure CPU usage remains under 1% when idle
-    - Optimize input event processing for sub-10ms response
-    - Add performance monitoring and logging
-    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+- [ ] 11. 性能优化和测试
+  - [ ] 11.1 优化性能和资源使用
+    - 分析内存使用并优化以保持在 50MB 以下
+    - 确保空闲时 CPU 使用率保持在 1% 以下
+    - 优化输入事件处理以实现低于 10ms 的响应
+    - 添加性能监控和日志记录
+    - _需求: 9.1, 9.2, 9.3, 9.4_
 
-  - [ ] 12.2 Create comprehensive test suite
-    - Write unit tests for all core components
-    - Add integration tests for end-to-end workflows
-    - Create performance benchmarks for critical operations
-    - Build automated UI testing for overlay functionality
-    - _Requirements: 8.5_
+  - [ ] 11.2 创建全面的测试套件
+    - 为所有核心组件编写单元测试
+    - 添加端到端工作流程的集成测试
+    - 为关键操作创建性能基准测试
+    - 构建覆盖层功能的自动化 UI 测试
+    - _需求: 9.5_
 
-- [ ] 13. Polish and user experience
-  - [ ] 13.1 Add error handling and recovery
-    - Implement graceful degradation for component failures
-    - Create user-friendly error messages with actionable solutions
-    - Add automatic recovery mechanisms for transient errors
-    - Build safe mode for minimal functionality when needed
-    - _Requirements: 6.4, 7.3_
+- [ ] 12. 完善和用户体验
+  - [ ] 12.1 添加错误处理和恢复
+    - 实现组件故障的优雅降级
+    - 创建带可操作解决方案的用户友好错误消息
+    - 添加瞬态错误的自动恢复机制
+    - 构建需要时的最小功能安全模式
+    - _需求: 5.4, 6.3_
 
-  - [ ] 13.2 Create documentation and help system
-    - Write user manual with setup and usage instructions
-    - Create in-app help system with interactive tutorials
-    - Add troubleshooting guide for common issues
-    - Build keyboard shortcut reference overlay
-    - _Requirements: 7.2, 7.3_
+  - [ ] 12.2 创建文档和帮助系统
+    - 编写包含设置和使用说明的用户手册
+    - 创建带交互式教程的应用内帮助系统
+    - 添加常见问题的故障排除指南
+    - 构建键盘快捷键参考覆盖层
+    - _需求: 6.2, 6.3_
 
-- [ ] 14. Packaging and distribution
-  - [ ] 14.1 Set up build and packaging system
-    - Configure Tauri bundler for macOS app creation
-    - Set up code signing for macOS distribution
-    - Create installer with proper permission handling
-    - Add automatic update mechanism
-    - _Requirements: 7.1, 7.5_
+- [ ] 13. 打包和分发
+  - [ ] 13.1 设置构建和打包系统
+    - 配置 Tauri 打包器进行 macOS 应用程序创建
+    - 设置 macOS 分发的代码签名
+    - 创建具有适当权限处理的安装程序
+    - 添加自动更新机制
+    - _需求: 6.1, 6.5_
 
-  - [ ] 14.2 Prepare for release
-    - Create release notes and changelog
-    - Set up distribution channels (GitHub releases, homebrew)
-    - Add telemetry for usage analytics (with user consent)
-    - Create feedback collection system
-    - _Requirements: 8.5_
+  - [ ] 13.2 准备发布
+    - 创建发布说明和更新日志
+    - 设置分发渠道（GitHub releases、homebrew）
+    - 添加使用分析的遥测（经用户同意）
+    - 创建反馈收集系统
+    - _需求: 9.5_

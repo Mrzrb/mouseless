@@ -44,6 +44,9 @@ pub struct GridManager {
     cells: Vec<GridCell>,
     key_to_cell: HashMap<String, usize>,
     screen_bounds: ScreenBounds,
+    //TODO: Add support for multi-screen grid management
+    //TODO: Implement cross-screen grid cell navigation
+    //TODO: Add screen-aware key combination generation
 }
 
 impl GridManager {

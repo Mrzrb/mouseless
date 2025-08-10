@@ -485,3 +485,86 @@ pub async fn request_accessibility_permissions() -> std::result::Result<(), Stri
         Ok(())
     }
 }
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HotkeyConfig {
+    pub grid_mode: String,
+    pub area_mode: String,
+    pub prediction_mode: String,
+    pub exit_key: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GridSettings {
+    pub rows: u32,
+    pub columns: u32,
+    pub opacity: f32,
+    pub show_labels: bool,
+    pub cell_padding: u32,
+    pub border_width: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppSettings {
+    pub hotkeys: HotkeyConfig,
+    pub grid_settings: GridSettings,
+    pub auto_start: bool,
+    pub theme: String,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            hotkeys: HotkeyConfig {
+                grid_mode: "Cmd+G".to_string(),
+                area_mode: "Cmd+A".to_string(),
+                prediction_mode: "Cmd+P".to_string(),
+                exit_key: "Escape".to_string(),
+            },
+            grid_settings: GridSettings {
+                rows: 3,
+                columns: 3,
+                opacity: 0.8,
+                show_labels: true,
+                cell_padding: 2,
+                border_width: 1,
+            },
+            auto_start: false,
+            theme: "dark".to_string(),
+        }
+    }
+}
+
+/// Load application settings
+#[tauri::command]
+pub async fn load_settings() -> std::result::Result<AppSettings, String> {
+    debug!("Tauri command: load_settings");
+    
+    //TODO: Implement actual settings loading from ~/.mouseless.toml
+    //TODO: Use ConfigManager to load and validate settings
+    //TODO: Handle missing or corrupted settings files
+    //TODO: Provide migration for old settings formats
+    let settings = AppSettings::default();
+    
+    info!("Settings loaded: {:?}", settings);
+    Ok(settings)
+}
+
+/// Save application settings
+#[tauri::command]
+pub async fn save_settings(settings: AppSettings) -> std::result::Result<(), String> {
+    debug!("Tauri command: save_settings");
+    
+    info!("Saving settings: {:?}", settings);
+    
+    //TODO: Implement actual settings saving to ~/.mouseless.toml
+    //TODO: Use ConfigManager to validate and save settings
+    //TODO: Handle file write errors and permissions
+    //TODO: Create backup of existing settings before overwriting
+    //TODO: Trigger configuration reload via SIGHUP signal
+    
+    info!("Settings saved successfully");
+    Ok(())
+}

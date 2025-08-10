@@ -10,6 +10,10 @@ use std::{
 };
 
 /// Method 1: Real-time clock-based rendering (no sleep, pure timing)
+//TODO: Add demo for multi-screen mouse movement
+//TODO: Add demo for configuration-driven animation settings
+//TODO: Add demo for different easing functions
+//TODO: Add performance benchmarking for animation quality
 fn realtime_curve_motion<F>(
     controller: &mut MouseController,
     duration_ms: u64,

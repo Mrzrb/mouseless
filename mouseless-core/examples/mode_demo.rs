@@ -8,6 +8,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     mouseless_core::init()?;
 
+    //TODO: Add demo for configuration file loading
+    //TODO: Add demo for multi-screen grid functionality
+    //TODO: Add demo for prediction mode when implemented
+    //TODO: Add interactive demo with real keyboard input
+
     println!("🎯 Mouseless Mode Management System Demo");
     println!("========================================");
 

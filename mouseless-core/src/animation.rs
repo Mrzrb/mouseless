@@ -218,6 +218,9 @@ impl AnimationMetrics {
 
     /// Check if performance meets sub-10ms requirement
     pub fn meets_performance_requirement(&self) -> bool {
+        //TODO: Make performance requirements configurable via config file
+        //TODO: Add performance monitoring and alerting
+        //TODO: Implement adaptive performance adjustment
         self.average_step_time_ms < 10.0 && self.max_step_time_ms < 10
     }
 }

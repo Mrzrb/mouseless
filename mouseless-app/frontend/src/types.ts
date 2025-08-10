@@ -20,6 +20,9 @@ export interface PredictionTarget {
   target_type: TargetType
   shortcut_key: string
   description?: string
+  //TODO: Add timestamp for prediction freshness
+  //TODO: Add application context information
+  //TODO: Add user interaction history for this target
 }
 
 export type AnimationStyle = 'Instant' | 'Linear' | 'Smooth' | 'Bounce'

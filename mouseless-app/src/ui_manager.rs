@@ -46,13 +46,15 @@ impl UIManager {
         // Close existing grid overlay if it exists
         self.hide_overlay("grid").await?;
 
-        // Get screen dimensions (for now use default, will be enhanced with actual screen detection)
+        //TODO: Get actual screen dimensions from ScreenManager
+        //TODO: Support multi-monitor grid overlays
+        //TODO: Handle screen resolution changes dynamically
         let screen_bounds = ScreenBounds {
             id: 1,
             x: 0,
             y: 0,
-            width: 1920,
-            height: 1080,
+            width: 1920,  //TODO: Get from actual screen detection
+            height: 1080, //TODO: Get from actual screen detection
             is_primary: true,
         };
 
@@ -190,13 +192,15 @@ impl UIManager {
         // Close existing area overlay if it exists
         self.hide_overlay("area").await?;
 
-        // Get screen dimensions (using default for now, could be improved with actual screen detection)
+        //TODO: Get actual screen dimensions from ScreenManager
+        //TODO: Support multi-monitor area overlays
+        //TODO: Handle dynamic screen configuration changes
         let screen_bounds = ScreenBounds {
             id: 0,
             x: 0,
             y: 0,
-            width: 1920,
-            height: 1080,
+            width: 1920,  //TODO: Get from actual screen detection
+            height: 1080, //TODO: Get from actual screen detection
             is_primary: true,
         };
         let screen_width = screen_bounds.width as f64;
@@ -385,6 +389,9 @@ impl UIManager {
         // macOS specific settings for overlay windows
         #[cfg(target_os = "macos")]
         {
+            //TODO: Add more macOS-specific window settings for better overlay behavior
+            //TODO: Handle macOS window level settings for proper overlay positioning
+            //TODO: Implement proper focus management for macOS overlays
             builder = builder
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
                 .hidden_title(true);
@@ -413,8 +420,9 @@ impl UIManager {
 
     /// Get the current screen dimensions for overlay sizing
     pub fn get_screen_dimensions(&self) -> Result<(f64, f64)> {
-        // For now, return a default size. This will be enhanced with actual screen detection
-        // in future tasks when we integrate with the screen module
+        //TODO: Integrate with ScreenManager to get actual screen dimensions
+        //TODO: Support multi-monitor setups with proper screen detection
+        //TODO: Handle screen resolution changes dynamically
         Ok((1920.0, 1080.0))
     }
 
@@ -425,9 +433,11 @@ impl UIManager {
             from.x, from.y, to.x, to.y
         );
 
-        // This is a placeholder for cursor movement animation
-        // The actual animation will be handled by the mouse controller
-        // when it's integrated in future tasks
+        //TODO: Implement visual cursor movement animation
+        //TODO: Show cursor trail or path visualization
+        //TODO: Integrate with mouse controller for smooth movement
+        //TODO: Add configurable animation settings (speed, easing)
+        //TODO: Handle animation cancellation and interruption
 
         Ok(())
     }

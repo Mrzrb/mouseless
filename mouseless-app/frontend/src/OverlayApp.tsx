@@ -267,6 +267,9 @@ function OverlayApp() {
       {overlayType === 'prediction' && predictionTargets.length > 0 && (
         <PredictionOverlay targets={predictionTargets} />
       )}
+      {/* TODO: Add prediction mode keyboard event handling */}
+      {/* TODO: Implement prediction target selection with numbered/lettered shortcuts */}
+      {/* TODO: Add confidence-based visual styling for prediction targets */}
 
       {showActivationIndicator && (
         <ActivationIndicator />

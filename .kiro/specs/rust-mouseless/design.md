@@ -1,68 +1,68 @@
-# Design Document
+# 设计文档
 
-## Overview
+## 概述
 
-This document outlines the technical design for a Rust-based keyboard mouse control tool that provides multiple interaction modes including basic cursor movement, grid-based positioning, area-based navigation, and intelligent prediction. The application will be built specifically for macOS, leveraging Rust's performance and safety features while providing a modern, animated user interface.
+本文档概述了基于 Rust 的键盘鼠标控制工具的技术设计，该工具提供多种交互模式，包括基本光标移动、基于网格的定位和智能预测。该应用程序将专门为 macOS 构建，利用 Rust 的性能和安全特性，同时提供现代化的动画用户界面。
 
-The system follows a modular architecture with clear separation between input handling, mouse control, UI rendering, and machine learning components. The design emphasizes performance, user experience, and extensibility.
+系统采用模块化架构，在输入处理、鼠标控制、UI 渲染和机器学习组件之间有清晰的分离。设计强调性能、用户体验和可扩展性。所有配置通过 `~/.mouseless.toml` 文件管理，无需 GUI 设置界面。
 
-## Architecture
+## 架构
 
-### High-Level Architecture
+### 高级架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Application Layer                        │
+│                        应用程序层                                │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   UI Manager    │  │  Mode Manager   │  │ Config Manager  │  │
+│  │   UI 管理器     │  │   模式管理器    │  │  配置管理器     │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
-│                        Core Services                           │
+│                        核心服务                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │ Input Handler   │  │ Mouse Controller│  │ Prediction AI   │  │
+│  │   输入处理器    │  │   鼠标控制器    │  │   预测 AI       │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
-│                        Platform Layer                          │
+│                        平台层                                   │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │ Global Hotkeys  │  │  Mouse Events   │  │ Accessibility   │  │
+│  │   全局热键      │  │   鼠标事件      │  │   辅助功能      │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Technology Stack
+### 技术栈
 
-Based on Context7 research, the following technology stack has been validated:
+基于 Context7 研究，以下技术栈已经过验证：
 
-- **Core Framework**: Native Rust application with Tauri for UI overlay
-  - Tauri provides excellent desktop app development with web frontend
-  - Supports overlay windows, event handling, and system integration
-  - Small binary size and good performance characteristics
-- **Mouse Control**: `enigo` crate for cross-platform mouse simulation
-  - Proven library for mouse movement, clicking, and scrolling
-  - Supports macOS through native APIs
-  - Good performance with sub-10ms response times
-- **Global Hotkeys**: `global-hotkey` crate for system-wide key capture
-  - Handles global keyboard events across the system
-  - Works well with macOS accessibility permissions
-- **UI Rendering**: Tauri with HTML/CSS/JavaScript frontend for overlays
-  - Enables modern web technologies for beautiful animations
-  - Supports glassmorphism effects and smooth transitions
-  - Easy to implement grid overlays and visual feedback
-- **Machine Learning**: Simple heuristic-based prediction initially, with potential for ML later
-  - Start with rule-based prediction (UI element detection, usage patterns)
-  - Consider `candle-core` or `tch` for future ML implementation
-- **Configuration**: `serde` with JSON/TOML support
-- **Logging**: `tracing` for structured logging
-- **Async Runtime**: `tokio` for asynchronous operations
+- **核心框架**: 原生 Rust 应用程序，使用 Tauri 进行 UI 覆盖层
+  - Tauri 提供出色的桌面应用程序开发和 Web 前端
+  - 支持覆盖层窗口、事件处理和系统集成
+  - 小的二进制文件大小和良好的性能特征
+- **鼠标控制**: `enigo` crate 用于跨平台鼠标模拟
+  - 经过验证的鼠标移动、点击和滚动库
+  - 通过原生 API 支持 macOS
+  - 良好的性能，响应时间低于 10ms
+- **全局热键**: `global-hotkey` crate 用于系统级按键捕获
+  - 处理整个系统的全局键盘事件
+  - 与 macOS 辅助功能权限配合良好
+- **UI 渲染**: Tauri 配合 HTML/CSS/JavaScript 前端用于覆盖层
+  - 支持现代 Web 技术实现美丽的动画
+  - 支持玻璃态效果和流畅过渡
+  - 易于实现网格覆盖层和视觉反馈
+- **机器学习**: 最初使用简单的基于启发式的预测，后续可能使用 ML
+  - 从基于规则的预测开始（UI 元素检测、使用模式）
+  - 考虑使用 `candle-core` 或 `tch` 进行未来的 ML 实现
+- **配置管理**: `serde` 配合 TOML 支持，默认使用 `~/.mouseless.toml`
+- **日志记录**: `tracing` 用于结构化日志
+- **异步运行时**: `tokio` 用于异步操作
 
-## Components and Interfaces
+## 组件和接口
 
-### 1. Input Handler Component
+### 1. 输入处理器组件
 
-**Responsibility**: Capture and process global keyboard input events
+**职责**: 捕获和处理全局键盘输入事件
 
 ```rust
 pub struct InputHandler {
@@ -70,31 +70,34 @@ pub struct InputHandler {
     event_receiver: GlobalHotKeyEventReceiver,
     key_bindings: KeyBindings,
     current_mode: Arc<Mutex<InputMode>>,
+    config_watcher: ConfigWatcher,
 }
 
 pub trait InputProcessor {
     async fn process_key_event(&self, event: KeyEvent) -> Result<Action>;
     fn register_hotkey(&mut self, hotkey: HotKey) -> Result<()>;
     fn update_bindings(&mut self, bindings: KeyBindings) -> Result<()>;
+    fn reload_config(&mut self) -> Result<()>;
 }
 ```
 
-**Key Features**:
-- Global hotkey registration and management
-- Configurable key binding system
-- Mode-aware input processing
-- Event filtering and validation
+**主要特性**:
+- 全局热键注册和管理
+- 可配置的按键绑定系统
+- 模式感知的输入处理
+- 事件过滤和验证
+- 配置文件热重载支持
 
-### 2. Mouse Controller Component
+### 2. 鼠标控制器组件
 
-**Responsibility**: Execute mouse movements, clicks, and scrolling operations
+**职责**: 执行鼠标移动、点击和滚动操作
 
 ```rust
 pub struct MouseController {
     enigo: Enigo,
     current_position: Arc<Mutex<Position>>,
-    movement_speed: MovementSpeed,
-    screen_info: ScreenInfo,
+    movement_config: MovementConfig,
+    screen_info: MultiScreenInfo,
 }
 
 pub trait MouseOperations {
@@ -102,25 +105,26 @@ pub trait MouseOperations {
     async fn click(&mut self, button: MouseButton) -> Result<()>;
     async fn scroll(&mut self, direction: ScrollDirection, amount: i32) -> Result<()>;
     fn get_current_position(&self) -> Position;
-    fn get_screen_bounds(&self) -> Vec<ScreenBounds>;
+    fn get_all_screen_bounds(&self) -> Vec<ScreenBounds>;
+    fn update_movement_config(&mut self, config: MovementConfig);
 }
 ```
 
-**Key Features**:
-- Smooth animated cursor movement
-- Multi-monitor support
-- Configurable movement speeds
-- Click and scroll operations
+**主要特性**:
+- 流畅的动画光标移动
+- 多显示器支持（网格跨所有屏幕）
+- 可配置的移动速度
+- 点击和滚动操作
+- 配置驱动的行为调整
 
-### 3. Mode Manager Component
+### 3. 模式管理器组件
 
-**Responsibility**: Manage different interaction modes and their transitions
+**职责**: 管理不同的交互模式及其转换
 
 ```rust
 pub enum InteractionMode {
     Basic(BasicMode),
     Grid(GridMode),
-    Area(AreaMode),
     Prediction(PredictionMode),
 }
 
@@ -128,6 +132,7 @@ pub struct ModeManager {
     current_mode: Arc<Mutex<InteractionMode>>,
     mode_history: Vec<InteractionMode>,
     ui_manager: Arc<UIManager>,
+    config: ModeConfig,
 }
 
 pub trait ModeController {
@@ -135,12 +140,13 @@ pub trait ModeController {
     async fn deactivate_current_mode(&mut self) -> Result<()>;
     fn get_current_mode(&self) -> InteractionMode;
     async fn handle_input(&self, input: KeyInput) -> Result<Action>;
+    fn update_mode_config(&mut self, config: ModeConfig);
 }
 ```
 
-### 4. UI Manager Component
+### 4. UI 管理器组件
 
-**Responsibility**: Render overlays, animations, and visual feedback
+**职责**: 渲染覆盖层、动画和视觉反馈
 
 ```rust
 pub struct UIManager {
@@ -152,16 +158,15 @@ pub struct UIManager {
 
 pub trait UIRenderer {
     async fn show_grid_overlay(&self, grid_config: GridConfig) -> Result<()>;
-    async fn show_area_overlay(&self, areas: Vec<Area>) -> Result<()>;
     async fn show_prediction_targets(&self, targets: Vec<PredictionTarget>) -> Result<()>;
     async fn animate_cursor_movement(&self, from: Position, to: Position) -> Result<()>;
     async fn hide_all_overlays(&self) -> Result<()>;
 }
 ```
 
-### 5. Prediction AI Component
+### 5. 预测 AI 组件
 
-**Responsibility**: Learn user patterns and predict likely click targets
+**职责**: 学习用户模式并预测可能的点击目标
 
 ```rust
 pub struct PredictionEngine {
@@ -178,9 +183,9 @@ pub trait PredictionModel {
 }
 ```
 
-## Data Models
+## 数据模型
 
-### Core Data Structures
+### 核心数据结构
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -229,7 +234,7 @@ pub enum TargetType {
 }
 ```
 
-### Configuration Models
+### 配置模型
 
 ```rust
 #[derive(Debug, Serialize, Deserialize)]
@@ -259,9 +264,9 @@ pub struct UIConfig {
 }
 ```
 
-## Error Handling
+## 错误处理
 
-### Error Types
+### 错误类型
 
 ```rust
 #[derive(Debug, thiserror::Error)]
@@ -286,12 +291,12 @@ pub enum MouselessError {
 }
 ```
 
-### Error Recovery Strategy
+### 错误恢复策略
 
-1. **Graceful Degradation**: If advanced features fail, fall back to basic functionality
-2. **User Notification**: Display clear error messages with actionable solutions
-3. **Automatic Recovery**: Attempt to recover from transient errors automatically
-4. **Safe Mode**: Provide a minimal functionality mode when critical components fail
+1. **优雅降级**: 如果高级功能失败，回退到基本功能
+2. **用户通知**: 显示清晰的错误消息和可操作的解决方案
+3. **自动恢复**: 尝试从瞬态错误中自动恢复
+4. **安全模式**: 在关键组件失败时提供最小功能模式
 
 ## Testing Strategy
 
@@ -358,46 +363,45 @@ mod benchmarks {
 }
 ```
 
-## Implementation Phases
+## 实现阶段
 
-### Phase 1: Core Infrastructure (Weeks 1-2)
-- Set up Rust project structure with Cargo workspace
-- Implement basic input handling with global-hotkey
-- Create mouse controller with enigo integration
-- Establish configuration system with serde
-- Set up logging and error handling framework
+### 阶段 1: 核心基础设施 (第 1-2 周)
+- 使用 Cargo workspace 设置 Rust 项目结构
+- 使用 global-hotkey 实现基本输入处理
+- 使用 enigo 集成创建鼠标控制器
+- 使用 serde 建立配置系统，支持 `~/.mouseless.toml`
+- 设置日志记录和错误处理框架
 
-### Phase 2: Basic Functionality (Weeks 3-4)
-- Implement basic cursor movement (I/K/J/L keys)
-- Add click operations (N/M keys for left/right click)
-- Implement scrolling functionality (U/O/Y/P keys)
-- Create activation/deactivation system
-- Add multi-monitor support
+### 阶段 2: 基本功能 (第 3-4 周)
+- 实现基本光标移动 (I/K/J/L 键)
+- 添加点击操作 (N/M 键用于左/右键点击)
+- 实现滚动功能 (U/O/Y/P 键)
+- 创建激活/停用系统
+- 添加多显示器支持
 
-### Phase 3: Advanced Modes (Weeks 5-7)
-- Implement grid mode with configurable overlay
-- Create area mode with 9-region division
-- Add mode switching and management system
-- Implement visual feedback and basic animations
-- Create settings and customization interface
+### 阶段 3: 高级模式 (第 5-7 周)
+- 实现带可配置覆盖层的网格模式
+- 添加模式切换和管理系统
+- 实现视觉反馈和基本动画
+- 创建基于配置文件的自定义系统
 
-### Phase 4: UI and Animations (Weeks 8-9)
-- Integrate Tauri for overlay rendering
-- Implement smooth cursor movement animations
-- Create beautiful grid and area overlays
-- Add glassmorphism and modern visual effects
-- Implement theme system and dark mode support
+### 阶段 4: UI 和动画 (第 8-9 周)
+- 集成 Tauri 进行覆盖层渲染
+- 实现流畅的光标移动动画
+- 创建美丽的网格覆盖层
+- 添加玻璃态和现代视觉效果
+- 实现主题系统和深色模式支持
 
-### Phase 5: Intelligent Prediction (Weeks 10-12)
-- Implement screen content analysis using macOS Accessibility API
-- Create usage pattern tracking system with local storage
-- Build heuristic-based prediction model (button detection, form fields, common UI patterns)
-- Add prediction target visualization with confidence indicators
-- Implement learning and feedback mechanisms for pattern improvement
+### 阶段 5: 智能预测 (第 10-12 周)
+- 使用 macOS 辅助功能 API 实现屏幕内容分析
+- 创建本地存储的使用模式跟踪系统
+- 构建基于启发式的预测模型（按钮检测、表单字段、常见 UI 模式）
+- 添加带置信度指示器的预测目标可视化
+- 实现学习和反馈机制以改进模式
 
-### Phase 6: Polish and Optimization (Weeks 13-14)
-- Performance optimization and memory management
-- macOS-specific integration and permissions handling
-- Comprehensive testing and bug fixes
-- Documentation and user guides
-- Packaging and distribution setup
+### 阶段 6: 完善和优化 (第 13-14 周)
+- 性能优化和内存管理
+- macOS 特定集成和权限处理
+- 全面测试和错误修复
+- 文档和用户指南
+- 打包和分发设置

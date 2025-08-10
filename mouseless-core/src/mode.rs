@@ -362,7 +362,10 @@ impl ModeController for ModeManager {
             }
             Some(InteractionMode::Prediction) => {
                 // Prediction mode - for now, fall back to basic input
-                // TODO: Implement prediction-specific input handling in future tasks
+                //TODO: Implement prediction-specific input handling
+                //TODO: Create PredictionMode struct and implement input processing
+                //TODO: Integrate with AI prediction system
+                //TODO: Handle prediction target selection and navigation
                 self.process_basic_input(input.clone())?
             }
         };

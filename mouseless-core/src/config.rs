@@ -120,11 +120,15 @@ impl ConfigManager {
             reason: "Could not determine home directory".to_string(),
         })?;
 
+        //TODO: Update to use ~/.mouseless.toml as per new requirements
+        //TODO: Remove .config subdirectory to match simplified config approach
         Ok(home_dir.join(".config").join("mouseless"))
     }
 
     /// Get the default configuration file path
     pub fn default_config_path() -> ConfigResult<PathBuf> {
+        //TODO: Change default config path to ~/.mouseless.toml as per updated requirements
+        //TODO: Support both JSON and TOML formats for backward compatibility
         Ok(Self::default_config_dir()?.join("config.json"))
     }
 
@@ -135,6 +139,8 @@ impl ConfigManager {
                 "Configuration file does not exist, creating default: {:?}",
                 self.config_path
             );
+            //TODO: Create default ~/.mouseless.toml with comprehensive comments
+            //TODO: Include all available configuration options with explanations
             self.save()?;
             return Ok(());
         }
@@ -209,6 +215,9 @@ impl ConfigManager {
     pub fn update_config(&mut self, config: AppConfig) -> ConfigResult<()> {
         self.validate_config(&config)?;
         self.current_config = config;
+        //TODO: Implement SIGHUP signal handling for configuration reload
+        //TODO: Notify other components about configuration changes
+        //TODO: Apply changes immediately without disrupting active sessions
         Ok(())
     }
 

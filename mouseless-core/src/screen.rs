@@ -82,25 +82,30 @@ impl ScreenManager {
         let mut screens = Vec::new();
 
         // Primary screen (usually the built-in display)
+        //TODO: Implement actual macOS screen detection using CoreGraphics APIs
+        //TODO: Use CGDisplayBounds() to get real screen dimensions
+        //TODO: Use CGGetActiveDisplayList() to enumerate all displays
+        //TODO: Use CGDisplayIsMain() to identify primary display
         screens.push(ScreenBounds {
             id: 0,
             x: 0,
             y: 0,
-            width: 1920,  // These should be detected from system
-            height: 1080, // These should be detected from system
+            width: 1920,  //TODO: Get actual screen width from system
+            height: 1080, //TODO: Get actual screen height from system
             is_primary: true,
         });
 
         // Check for common multi-monitor setups
-        // This is a placeholder - real implementation would query the system
+        //TODO: Replace this placeholder with real multi-monitor detection
+        //TODO: Query system for actual connected displays and their positions
         if std::env::var("MOUSELESS_MULTI_MONITOR").is_ok() {
             // Add a second monitor to the right
             screens.push(ScreenBounds {
                 id: 1,
-                x: 1920,
-                y: 0,
-                width: 1920,
-                height: 1080,
+                x: 1920, //TODO: Get actual position from system
+                y: 0,    //TODO: Get actual position from system
+                width: 1920,  //TODO: Get actual width from system
+                height: 1080, //TODO: Get actual height from system
                 is_primary: false,
             });
         }

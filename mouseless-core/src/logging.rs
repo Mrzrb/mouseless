@@ -8,6 +8,11 @@ use tracing_subscriber::{
 
 /// Initialize the logging system with structured output
 pub fn init_logging() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    //TODO: Make logging configuration configurable via ~/.mouseless.toml
+    //TODO: Add log file rotation and archiving
+    //TODO: Implement performance metrics logging
+    //TODO: Add user privacy controls for logging sensitive data
+    
     // Create environment filter with default level
     let filter_str =
         std::env::var("RUST_LOG").unwrap_or_else(|_| "mouseless=debug,info".to_string());

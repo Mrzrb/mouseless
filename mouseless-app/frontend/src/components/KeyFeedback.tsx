@@ -9,6 +9,11 @@ interface KeyFeedbackProps {
 const KeyFeedback: React.FC<KeyFeedbackProps> = ({ sequence, timestamp }) => {
   const [isVisible, setIsVisible] = useState(true)
 
+  //TODO: Make auto-hide timeout configurable
+  //TODO: Add different feedback styles for different modes
+  //TODO: Show key combination progress and validation
+  //TODO: Add sound feedback option
+  
   useEffect(() => {
     // Auto-hide after 2 seconds
     const timer = setTimeout(() => {
