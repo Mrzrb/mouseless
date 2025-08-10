@@ -22,7 +22,10 @@ enigo = "0.2"
 global-hotkey = "0.6"
 
 # UI framework
-tauri = { version = "2.0", features = ["macos-private-api"] }
+tauri = { version = "2.0", features = ["macos-private-api", "tray-icon"] }
+
+# macOS specific
+cocoa = "0.25"
 
 # Configuration
 toml = "0.8"

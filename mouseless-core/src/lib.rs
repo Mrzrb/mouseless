@@ -16,6 +16,7 @@ pub mod logging;
 pub mod mode;
 pub mod models;
 pub mod mouse;
+pub mod mouse_service;
 //TODO: Create prediction_mode.rs module for AI-driven target prediction
 //TODO: Implement PredictionEngine with screen content analysis
 //TODO: Add machine learning model integration (candle-core or tch)
@@ -38,6 +39,7 @@ pub use input::*;
 pub use mode::*;
 pub use models::*;
 pub use mouse::*;
+pub use mouse_service::*;
 pub use screen::*;
 pub use traits::*;
 

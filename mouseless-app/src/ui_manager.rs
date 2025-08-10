@@ -5,7 +5,7 @@ use mouseless_core::{
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tracing::{debug, error, info, warn};
 
 /// UI Manager handles all overlay window creation and management
@@ -541,40 +541,31 @@ impl UIManager {
         self.hide_overlay("key-feedback").await
     }
 
-    /// Move mouse to specific position
-    pub async fn move_mouse_to_position(&mut self, x: i32, y: i32) -> Result<()> {
-        use mouseless_core::{AnimationType, MouseController, MouseOperations};
-
-        info!("🖱️ Moving mouse to position ({}, {})", x, y);
-
-        // Create mouse controller on demand to avoid Send/Sync issues
-        let mut controller = MouseController::new().map_err(|e| {
+    /// Move mouse to specific position using external mouse service
+    pub async fn move_mouse_to_position_with_service(
+        &mut self, 
+        x: i32, 
+        y: i32, 
+        mouse_service: &mouseless_core::MouseService
+    ) -> Result<()> {
+        mouse_service.move_to_position(x, y).await.map_err(|e| {
             MouselessError::SystemError(std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("Failed to create mouse controller: {}", e),
+                e,
             ))
-        })?;
-
-        let position = Position::new(x, y);
-        controller
-            .move_to(position, AnimationType::Smooth)
-            .map_err(|e| {
-                MouselessError::SystemError(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Failed to move mouse: {}", e),
-                ))
-            })?;
-
-        info!("✅ Mouse moved successfully to ({}, {})", x, y);
-        Ok(())
+        })
     }
 
     /// Move mouse to grid cell by key combination
-    pub async fn move_mouse_to_grid_cell(&mut self, key_combination: &str) -> Result<()> {
+    pub async fn move_mouse_to_grid_cell_with_service(
+        &mut self, 
+        key_combination: &str,
+        mouse_service: &mouseless_core::MouseService
+    ) -> Result<()> {
         info!("🎯 Moving mouse to grid cell: {}", key_combination);
 
         if let Some(position) = self.get_grid_cell_position(key_combination) {
-            self.move_mouse_to_position(position.x, position.y).await?;
+            self.move_mouse_to_position_with_service(position.x, position.y, mouse_service).await?;
 
             // Hide grid overlay after successful movement
             self.hide_all_overlays().await?;

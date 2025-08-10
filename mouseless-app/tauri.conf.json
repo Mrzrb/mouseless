@@ -17,14 +17,21 @@
                 "height": 600,
                 "resizable": true,
                 "fullscreen": false,
-                "visible": true,
-                "url": "index.html"
+                "visible": false,
+                "url": "index.html",
+                "skipTaskbar": true
             }
         ],
         "security": {
             "csp": null
         },
-        "macOSPrivateApi": true
+        "macOSPrivateApi": true,
+        "trayIcon": {
+            "iconPath": "icons/icon.png",
+            "iconAsTemplate": true,
+            "menuOnLeftClick": false,
+            "tooltip": "Mouseless - Keyboard Mouse Control"
+        }
     },
     "bundle": {
         "active": true,

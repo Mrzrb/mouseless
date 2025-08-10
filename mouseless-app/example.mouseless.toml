@@ -1,0 +1,48 @@
+# Mouseless 配置文件示例
+# 将此文件复制到 ~/.mouseless.toml 来配置应用
+
+[general]
+# 应用是否在启动时自动运行
+auto_start = true
+
+# 日志级别: trace, debug, info, warn, error
+log_level = "info"
+
+[mouse]
+# 鼠标移动动画类型: Linear, Smooth, Bounce
+animation_type = "Smooth"
+
+# 鼠标移动速度: Slow, Normal, Fast
+movement_speed = "Normal"
+
+[hotkeys]
+# 全局热键配置
+# 注意: 需要辅助功能权限才能工作
+
+# 激活网格模式
+activate_grid = "cmd+shift+g"
+
+# 激活区域模式  
+activate_area = "cmd+shift+a"
+
+# 快速移动到屏幕中心
+move_to_center = "cmd+shift+c"
+
+[grid]
+# 网格默认配置
+rows = 3
+columns = 3
+show_labels = true
+opacity = 0.8
+cell_padding = 2
+border_width = 1
+
+[area]
+# 区域模式配置
+opacity = 0.7
+highlight_color = "#FF6B6B"
+
+[permissions]
+# 权限检查设置
+check_on_startup = true
+show_permission_reminder = true

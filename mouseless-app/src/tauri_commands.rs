@@ -1,10 +1,11 @@
-use mouseless_core::{GridConfig, PredictionTarget, AnimationType};
+use mouseless_core::{GridConfig, PredictionTarget, AnimationType, MouseService};
 use tauri::{AppHandle, State};
 use tracing::{debug, error, info};
 use std::sync::{Arc, Mutex};
 use crate::ui_manager::UIManager;
 
 type UIManagerState = Arc<Mutex<Option<UIManager>>>;
+type MouseServiceState = MouseService;
 
 /// Show grid overlay with specified configuration
 #[tauri::command]
@@ -366,46 +367,18 @@ pub async fn test_show_grid() -> std::result::Result<String, String> {
 #[tauri::command]
 pub async fn move_mouse_to_position(
     _app_handle: AppHandle,
-    ui_manager_state: State<'_, UIManagerState>,
+    mouse_service: State<'_, MouseServiceState>,
     x: i32,
     y: i32,
 ) -> std::result::Result<(), String> {
     info!("🖱️ Tauri command: move_mouse_to_position - x: {}, y: {}", x, y);
     
-    let ui_manager = {
-        let mut ui_manager_guard = ui_manager_state.lock()
-            .map_err(|e| {
-                error!("❌ Failed to lock UI manager: {}", e);
-                format!("Failed to lock UI manager: {}", e)
-            })?;
-        
-        ui_manager_guard.take()
-    };
-    
-    if let Some(mut ui_manager) = ui_manager {
-        let result = ui_manager.move_mouse_to_position(x, y).await
-            .map_err(|e| {
-                error!("❌ Failed to move mouse: {}", e);
-                format!("Failed to move mouse: {}", e)
-            });
-        
-        // Put the UI manager back
-        let mut ui_manager_guard = ui_manager_state.lock()
-            .map_err(|e| {
-                error!("❌ Failed to lock UI manager when putting back: {}", e);
-                format!("Failed to lock UI manager: {}", e)
-            })?;
-        *ui_manager_guard = Some(ui_manager);
-        
-        if result.is_ok() {
-            info!("🎉 Mouse moved successfully to ({}, {})", x, y);
-        }
-        
-        result
-    } else {
-        error!("❌ UI manager not initialized");
-        Err("UI manager not initialized".to_string())
-    }
+    mouse_service.inner().move_to_position(x, y).await
+        .map(|_| info!("🎉 Mouse moved successfully to ({}, {})", x, y))
+        .map_err(|e| {
+            error!("❌ Failed to move mouse: {}", e);
+            e
+        })
 }
 
 /// Move mouse to grid cell by key combination
@@ -413,6 +386,7 @@ pub async fn move_mouse_to_position(
 pub async fn move_mouse_to_grid_cell(
     _app_handle: AppHandle,
     ui_manager_state: State<'_, UIManagerState>,
+    mouse_service: State<'_, MouseServiceState>,
     key_combination: String,
 ) -> std::result::Result<(), String> {
     info!("🎯 Tauri command: move_mouse_to_grid_cell - keys: {}", key_combination);
@@ -428,7 +402,7 @@ pub async fn move_mouse_to_grid_cell(
     };
     
     if let Some(mut ui_manager) = ui_manager {
-        let result = ui_manager.move_mouse_to_grid_cell(&key_combination).await
+        let result = ui_manager.move_mouse_to_grid_cell_with_service(&key_combination, mouse_service.inner()).await
             .map_err(|e| {
                 error!("❌ Failed to move mouse to grid cell: {}", e);
                 format!("Failed to move mouse to grid cell: {}", e)

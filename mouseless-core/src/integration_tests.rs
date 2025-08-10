@@ -1,12 +1,12 @@
 #[cfg(test)]
-mod integration_tests {
+mod integrations_tests {
     //TODO: Add comprehensive integration tests for configuration file loading
     //TODO: Add tests for SIGHUP signal handling and configuration reload
     //TODO: Add tests for multi-screen grid functionality
     //TODO: Add tests for prediction mode integration
     //TODO: Add performance benchmarks for end-to-end workflows
     //TODO: Add tests for error recovery and graceful degradation
-    
+
     use crate::{
         traits::ModeController, Action, AnimationType, InteractionMode, KeyBindings, KeyInput,
         ModeEvent, ModeManager, MouseButton,
