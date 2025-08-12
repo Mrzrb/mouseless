@@ -11,6 +11,15 @@ pub enum MouseCommand {
         y: i32,
         response_tx: mpsc::Sender<Result<(), String>>,
     },
+    MoveRelative {
+        dx: i32,
+        dy: i32,
+        response_tx: mpsc::Sender<Result<(), String>>,
+    },
+    Click {
+        button: crate::models::MouseButton,
+        response_tx: mpsc::Sender<Result<(), String>>,
+    },
     RefreshScreens {
         response_tx: mpsc::Sender<Result<(), String>>,
     },
@@ -70,6 +79,80 @@ impl MouseService {
                             }
                         }
                     }
+                    MouseCommand::MoveRelative { dx, dy, response_tx } => {
+                        info!("🖱️ Moving mouse relatively by ({}, {})", dx, dy);
+
+                        // Get or create controller
+                        if controller.is_none() {
+                            info!("🖱️ Creating new MouseController instance");
+                            match MouseController::new() {
+                                Ok(new_controller) => {
+                                    controller = Some(new_controller);
+                                }
+                                Err(e) => {
+                                    let error_msg = format!("Failed to create mouse controller: {}", e);
+                                    error!("❌ {}", error_msg);
+                                    let _ = response_tx.send(Err(error_msg));
+                                    continue;
+                                }
+                            }
+                        }
+
+                        let result = if let Some(ref mut ctrl) = controller {
+                            ctrl.move_relative(dx, dy)
+                                .map_err(|e| format!("Failed to move mouse relatively: {}", e))
+                        } else {
+                            Err("Mouse controller not available".to_string())
+                        };
+
+                        match result {
+                            Ok(_) => {
+                                info!("✅ Mouse moved relatively by ({}, {})", dx, dy);
+                                let _ = response_tx.send(Ok(()));
+                            }
+                            Err(e) => {
+                                error!("❌ Failed to move mouse relatively: {}", e);
+                                let _ = response_tx.send(Err(e));
+                            }
+                        }
+                    }
+                    MouseCommand::Click { button, response_tx } => {
+                        info!("🖱️ Clicking mouse button: {:?}", button);
+
+                        // Get or create controller
+                        if controller.is_none() {
+                            info!("🖱️ Creating new MouseController instance");
+                            match MouseController::new() {
+                                Ok(new_controller) => {
+                                    controller = Some(new_controller);
+                                }
+                                Err(e) => {
+                                    let error_msg = format!("Failed to create mouse controller: {}", e);
+                                    error!("❌ {}", error_msg);
+                                    let _ = response_tx.send(Err(error_msg));
+                                    continue;
+                                }
+                            }
+                        }
+
+                        let result = if let Some(ref mut ctrl) = controller {
+                            ctrl.click(button)
+                                .map_err(|e| format!("Failed to click mouse: {}", e))
+                        } else {
+                            Err("Mouse controller not available".to_string())
+                        };
+
+                        match result {
+                            Ok(_) => {
+                                info!("✅ Mouse clicked successfully: {:?}", button);
+                                let _ = response_tx.send(Ok(()));
+                            }
+                            Err(e) => {
+                                error!("❌ Failed to click mouse: {}", e);
+                                let _ = response_tx.send(Err(e));
+                            }
+                        }
+                    }
                     MouseCommand::RefreshScreens { response_tx } => {
                         let result = if let Some(ref mut ctrl) = controller {
                             ctrl.refresh_screens()
@@ -102,6 +185,32 @@ impl MouseService {
         
         self.command_tx
             .send(MouseCommand::MoveTo { x, y, response_tx })
+            .map_err(|e| format!("Failed to send mouse command: {}", e))?;
+
+        response_rx
+            .recv()
+            .map_err(|e| format!("Failed to receive mouse response: {}", e))?
+    }
+
+    /// Move mouse by relative offset
+    pub async fn move_to_relative(&self, dx: i32, dy: i32) -> Result<(), String> {
+        let (response_tx, response_rx) = mpsc::channel();
+        
+        self.command_tx
+            .send(MouseCommand::MoveRelative { dx, dy, response_tx })
+            .map_err(|e| format!("Failed to send mouse command: {}", e))?;
+
+        response_rx
+            .recv()
+            .map_err(|e| format!("Failed to receive mouse response: {}", e))?
+    }
+
+    /// Click mouse button
+    pub async fn click(&self, button: crate::models::MouseButton) -> Result<(), String> {
+        let (response_tx, response_rx) = mpsc::channel();
+        
+        self.command_tx
+            .send(MouseCommand::Click { button, response_tx })
             .map_err(|e| format!("Failed to send mouse command: {}", e))?;
 
         response_rx

@@ -1,0 +1,11 @@
+[package]
+name = "test_capslock"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "test_capslock"
+path = "test_capslock.rs"
+
+[dependencies]
+rdev = { git = "https://github.com/Narsil/rdev", branch = "main" }

@@ -1,19 +1,20 @@
 //! Input handling module for global hotkey registration and management
 //!
 //! This module provides functionality for:
-//! - Global hotkey registration using the global-hotkey crate
+//! - Global hotkey registration using the rdev crate
 //! - Configurable activation keys (CapsLock, modifiers)
 //! - Double-click detection for activation triggers
 //! - Key binding configuration and validation
 
 use async_trait::async_trait;
-use global_hotkey::hotkey::{Code, HotKey, Modifiers};
-use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
-use std::collections::HashMap;
+#[cfg(target_os = "macos")]
+use rdev::set_is_main_thread;
+use rdev::{listen, Event, EventType, Key};
+use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
     error::{InputError, InputResult},
@@ -71,26 +72,26 @@ pub enum ActivationKey {
 }
 
 impl ActivationKey {
-    /// Convert to global-hotkey Code
-    pub fn to_code(&self) -> Code {
+    /// Convert to rdev Key
+    pub fn to_key(&self) -> Key {
         match self {
-            ActivationKey::CapsLock => Code::CapsLock,
-            ActivationKey::Ctrl => Code::ControlLeft,
-            ActivationKey::Shift => Code::ShiftLeft,
-            ActivationKey::Command => Code::MetaLeft,
-            ActivationKey::Option => Code::AltLeft,
-            ActivationKey::F1 => Code::F1,
-            ActivationKey::F2 => Code::F2,
-            ActivationKey::F3 => Code::F3,
-            ActivationKey::F4 => Code::F4,
-            ActivationKey::F5 => Code::F5,
-            ActivationKey::F6 => Code::F6,
-            ActivationKey::F7 => Code::F7,
-            ActivationKey::F8 => Code::F8,
-            ActivationKey::F9 => Code::F9,
-            ActivationKey::F10 => Code::F10,
-            ActivationKey::F11 => Code::F11,
-            ActivationKey::F12 => Code::F12,
+            ActivationKey::CapsLock => Key::CapsLock,
+            ActivationKey::Ctrl => Key::ControlLeft,
+            ActivationKey::Shift => Key::ShiftLeft,
+            ActivationKey::Command => Key::MetaLeft,
+            ActivationKey::Option => Key::Alt,
+            ActivationKey::F1 => Key::F1,
+            ActivationKey::F2 => Key::F2,
+            ActivationKey::F3 => Key::F3,
+            ActivationKey::F4 => Key::F4,
+            ActivationKey::F5 => Key::F5,
+            ActivationKey::F6 => Key::F6,
+            ActivationKey::F7 => Key::F7,
+            ActivationKey::F8 => Key::F8,
+            ActivationKey::F9 => Key::F9,
+            ActivationKey::F10 => Key::F10,
+            ActivationKey::F11 => Key::F11,
+            ActivationKey::F12 => Key::F12,
         }
     }
 }
@@ -113,10 +114,6 @@ impl Default for DoubleClickState {
 
 /// Input handler for global hotkey management
 pub struct InputHandler {
-    /// Global hotkey manager
-    hotkey_manager: GlobalHotKeyManager,
-    /// Event receiver for hotkey events
-    event_receiver: Arc<Mutex<Option<mpsc::UnboundedReceiver<GlobalHotKeyEvent>>>>,
     /// Current key bindings
     key_bindings: Arc<Mutex<KeyBindings>>,
     /// Activation configuration
@@ -125,29 +122,28 @@ pub struct InputHandler {
     is_active: Arc<Mutex<bool>>,
     /// Double-click detection state
     double_click_state: Arc<Mutex<DoubleClickState>>,
-    /// Registered hotkeys map
-    registered_hotkeys: Arc<Mutex<HashMap<u32, String>>>,
+    /// Registered hotkeys set
+    registered_hotkeys: Arc<Mutex<HashSet<Key>>>,
     /// Action sender for processed events
     action_sender: Arc<Mutex<Option<mpsc::UnboundedSender<Action>>>>,
+    /// Currently pressed modifier keys
+    pressed_modifiers: Arc<Mutex<HashSet<Key>>>,
+    /// Event loop handle
+    event_loop_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
 impl InputHandler {
     /// Create a new input handler
     pub fn new() -> InputResult<Self> {
-        let hotkey_manager =
-            GlobalHotKeyManager::new().map_err(|e| InputError::EventProcessingFailed {
-                reason: format!("Failed to create global hotkey manager: {}", e),
-            })?;
-
         Ok(Self {
-            hotkey_manager,
-            event_receiver: Arc::new(Mutex::new(None)),
             key_bindings: Arc::new(Mutex::new(KeyBindings::default())),
             activation_config: Arc::new(Mutex::new(ActivationConfig::default())),
             is_active: Arc::new(Mutex::new(false)),
             double_click_state: Arc::new(Mutex::new(DoubleClickState::default())),
-            registered_hotkeys: Arc::new(Mutex::new(HashMap::new())),
+            registered_hotkeys: Arc::new(Mutex::new(HashSet::new())),
             action_sender: Arc::new(Mutex::new(None)),
+            pressed_modifiers: Arc::new(Mutex::new(HashSet::new())),
+            event_loop_handle: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -162,29 +158,20 @@ impl InputHandler {
     pub fn register_activation_hotkey(&mut self) -> InputResult<()> {
         let config = self.activation_config.lock().unwrap().clone();
 
-        // Convert modifiers
-        let mut modifiers = Modifiers::empty();
-        for modifier in &config.modifier_keys {
-            match modifier {
-                KeyModifier::Shift => modifiers |= Modifiers::SHIFT,
-                KeyModifier::Ctrl => modifiers |= Modifiers::CONTROL,
-                KeyModifier::Alt => modifiers |= Modifiers::ALT,
-                KeyModifier::Cmd => modifiers |= Modifiers::META,
-            }
-        }
-
-        // Create and register hotkey
-        let hotkey = HotKey::new(Some(modifiers), config.trigger_key.to_code());
-
-        self.hotkey_manager.register(hotkey).map_err(|_e| {
-            InputError::HotkeyRegistrationFailed {
-                key: format!("{:?}", config.trigger_key),
-            }
-        })?;
-
         // Store the registered hotkey
         let mut registered = self.registered_hotkeys.lock().unwrap();
-        registered.insert(hotkey.id(), format!("{:?}", config.trigger_key));
+        registered.insert(config.trigger_key.to_key());
+
+        // Also register modifier keys if any
+        for modifier in &config.modifier_keys {
+            let key = match modifier {
+                KeyModifier::Shift => Key::ShiftLeft,
+                KeyModifier::Ctrl => Key::ControlLeft,
+                KeyModifier::Alt => Key::Alt,
+                KeyModifier::Cmd => Key::MetaLeft,
+            };
+            registered.insert(key);
+        }
 
         info!(
             "Registered activation hotkey: {:?} with modifiers: {:?}",
@@ -195,67 +182,240 @@ impl InputHandler {
     }
 
     /// Start listening for hotkey events
-    /// Note: This is a simplified implementation. In a real application,
-    /// you would need to properly handle the global hotkey event receiver.
     pub async fn start_event_loop(&self) -> InputResult<()> {
-        info!("Started input event loop (simplified implementation)");
+        info!("Starting input event loop with rdev");
 
-        //TODO: Implement proper global hotkey event loop
-        //TODO: Create a proper event receiver from the global-hotkey crate
-        //TODO: Set up the event processing loop with tokio
-        //TODO: Handle hotkey events and convert them to actions
-        //TODO: Integrate with the action channel for sending processed events
-        //TODO: Handle errors and reconnection logic
+        let is_active = Arc::clone(&self.is_active);
+        let double_click_state = Arc::clone(&self.double_click_state);
+        let activation_config = Arc::clone(&self.activation_config);
+        let action_sender = Arc::clone(&self.action_sender);
+        let key_bindings = Arc::clone(&self.key_bindings);
+        let pressed_modifiers = Arc::clone(&self.pressed_modifiers);
+        let registered_hotkeys = Arc::clone(&self.registered_hotkeys);
 
+        let handle = tokio::task::spawn_blocking(move || {
+            #[cfg(target_os = "macos")]
+            set_is_main_thread(false);
+            // Set up a safer event callback that completely avoids macOS threading issues
+            if let Err(error) = listen(move |event| {
+                // Catch any panics to prevent crashes
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    // Only process specific key events to avoid macOS API issues
+                    match event.event_type {
+                        rdev::EventType::KeyPress(key) => {
+                            info!("Key press detected: {:?}", key);
+                            // Only process keys we care about to minimize macOS API calls
+                            if Self::is_safe_key(&key) {
+                                info!("Processing safe key: {:?}", key);
+                                if let Err(e) = Self::process_key_press_safe(
+                                    key,
+                                    &is_active,
+                                    &double_click_state,
+                                    &activation_config,
+                                    &action_sender,
+                                    &key_bindings,
+                                    &pressed_modifiers,
+                                    &registered_hotkeys,
+                                ) {
+                                    error!("Error processing key press: {:?}", e);
+                                }
+                            } else {
+                                debug!("Ignoring unsafe key: {:?}", key);
+                            }
+                        }
+                        rdev::EventType::KeyRelease(key) => {
+                            // Only track modifier key releases
+                            if Self::is_modifier_key(&key) {
+                                pressed_modifiers.lock().unwrap().remove(&key);
+                            }
+                        }
+                        _ => {
+                            // Completely ignore all other event types
+                        }
+                    }
+                }));
+
+                if let Err(panic_info) = result {
+                    error!("Panic caught in event handler: {:?}", panic_info);
+                }
+            }) {
+                error!("Error in rdev listen: {:?}", error);
+            }
+        });
+
+        *self.event_loop_handle.lock().unwrap() = Some(handle);
+        info!("Started input event loop with rdev");
         Ok(())
     }
 
-    /// Process a hotkey event
-    /// Note: This is a simplified implementation for testing purposes
-    async fn _process_hotkey_event(
-        event: GlobalHotKeyEvent,
+    /// Process an rdev event synchronously to avoid macOS threading issues
+    fn process_rdev_event_sync(
+        event: Event,
         is_active: &Arc<Mutex<bool>>,
         double_click_state: &Arc<Mutex<DoubleClickState>>,
         activation_config: &Arc<Mutex<ActivationConfig>>,
         action_sender: &Arc<Mutex<Option<mpsc::UnboundedSender<Action>>>>,
-        _key_bindings: &Arc<Mutex<KeyBindings>>,
+        key_bindings: &Arc<Mutex<KeyBindings>>,
+        pressed_modifiers: &Arc<Mutex<HashSet<Key>>>,
+        registered_hotkeys: &Arc<Mutex<HashSet<Key>>>,
     ) -> InputResult<()> {
-        debug!("Processing hotkey event: {:?}", event);
+        match event.event_type {
+            rdev::EventType::KeyPress(key) => {
+                debug!("Key pressed: {:?}", key);
 
-        match event.state {
-            HotKeyState::Pressed => {
+                // Track modifier keys
+                if Self::is_modifier_key(&key) {
+                    pressed_modifiers.lock().unwrap().insert(key);
+                }
+
+                // Check if this is an activation key
                 let config = activation_config.lock().unwrap().clone();
-                let mut active = is_active.lock().unwrap();
+                let registered = registered_hotkeys.lock().unwrap();
 
-                if !*active {
-                    // Handle activation logic
-                    if config.double_click_required {
-                        let should_activate = Self::handle_double_click_detection(
-                            &double_click_state,
-                            config.double_click_timeout_ms,
-                        )?;
+                if key == config.trigger_key.to_key() && registered.contains(&key) {
+                    // Check if required modifiers are pressed
+                    let modifiers_pressed = pressed_modifiers.lock().unwrap();
+                    let required_modifiers_pressed = config.modifier_keys.iter().all(|modifier| {
+                        let required_key = match modifier {
+                            KeyModifier::Shift => Key::ShiftLeft,
+                            KeyModifier::Ctrl => Key::ControlLeft,
+                            KeyModifier::Alt => Key::Alt,
+                            KeyModifier::Cmd => Key::MetaLeft,
+                        };
+                        modifiers_pressed.contains(&required_key)
+                    });
 
-                        if should_activate {
-                            *active = true;
-                            Self::send_action(
-                                Action::ActivateMode(InteractionMode::Basic),
-                                &action_sender,
-                            )?;
-                            info!("Activated mouseless mode via double-click");
+                    if required_modifiers_pressed {
+                        let mut active = is_active.lock().unwrap();
+
+                        if !*active {
+                            // Handle activation logic
+                            if config.double_click_required {
+                                let should_activate = Self::handle_double_click_detection(
+                                    &double_click_state,
+                                    config.double_click_timeout_ms,
+                                )?;
+
+                                if should_activate {
+                                    *active = true;
+                                    Self::send_action(
+                                        Action::ActivateMode(InteractionMode::Basic),
+                                        &action_sender,
+                                    )?;
+                                    info!("Activated mouseless mode via double-click");
+                                }
+                            } else {
+                                *active = true;
+                                Self::send_action(
+                                    Action::ActivateMode(InteractionMode::Basic),
+                                    &action_sender,
+                                )?;
+                                info!("Activated mouseless mode");
+                            }
                         }
-                    } else {
-                        *active = true;
-                        Self::send_action(
-                            Action::ActivateMode(InteractionMode::Basic),
-                            &action_sender,
-                        )?;
-                        info!("Activated mouseless mode");
                     }
+                } else if *is_active.lock().unwrap() {
+                    // Process key input when mode is active
+                    Self::process_active_key_input_sync(key, &key_bindings, &action_sender)?;
                 }
             }
-            HotKeyState::Released => {
-                // Handle key release if needed
-                debug!("Hotkey released");
+            rdev::EventType::KeyRelease(key) => {
+                debug!("Key released: {:?}", key);
+
+                // Remove modifier keys from tracking
+                if Self::is_modifier_key(&key) {
+                    pressed_modifiers.lock().unwrap().remove(&key);
+                }
+            }
+            _ => {
+                // Ignore other event types
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Process an rdev event (async version - kept for compatibility)
+    async fn process_rdev_event(
+        event: Event,
+        is_active: &Arc<Mutex<bool>>,
+        double_click_state: &Arc<Mutex<DoubleClickState>>,
+        activation_config: &Arc<Mutex<ActivationConfig>>,
+        action_sender: &Arc<Mutex<Option<mpsc::UnboundedSender<Action>>>>,
+        key_bindings: &Arc<Mutex<KeyBindings>>,
+        pressed_modifiers: &Arc<Mutex<HashSet<Key>>>,
+        registered_hotkeys: &Arc<Mutex<HashSet<Key>>>,
+    ) -> InputResult<()> {
+        match event.event_type {
+            EventType::KeyPress(key) => {
+                debug!("Key pressed: {:?}", key);
+
+                // Track modifier keys
+                if Self::is_modifier_key(&key) {
+                    pressed_modifiers.lock().unwrap().insert(key);
+                }
+
+                // Check if this is an activation key
+                let config = activation_config.lock().unwrap().clone();
+                let registered = registered_hotkeys.lock().unwrap();
+
+                if key == config.trigger_key.to_key() && registered.contains(&key) {
+                    // Check if required modifiers are pressed
+                    let modifiers_pressed = pressed_modifiers.lock().unwrap();
+                    let required_modifiers_pressed = config.modifier_keys.iter().all(|modifier| {
+                        let required_key = match modifier {
+                            KeyModifier::Shift => Key::ShiftLeft,
+                            KeyModifier::Ctrl => Key::ControlLeft,
+                            KeyModifier::Alt => Key::Alt,
+                            KeyModifier::Cmd => Key::MetaLeft,
+                        };
+                        modifiers_pressed.contains(&required_key)
+                    });
+
+                    if required_modifiers_pressed {
+                        let mut active = is_active.lock().unwrap();
+
+                        if !*active {
+                            // Handle activation logic
+                            if config.double_click_required {
+                                let should_activate = Self::handle_double_click_detection(
+                                    &double_click_state,
+                                    config.double_click_timeout_ms,
+                                )?;
+
+                                if should_activate {
+                                    *active = true;
+                                    Self::send_action(
+                                        Action::ActivateMode(InteractionMode::Basic),
+                                        &action_sender,
+                                    )?;
+                                    info!("Activated mouseless mode via double-click");
+                                }
+                            } else {
+                                *active = true;
+                                Self::send_action(
+                                    Action::ActivateMode(InteractionMode::Basic),
+                                    &action_sender,
+                                )?;
+                                info!("Activated mouseless mode");
+                            }
+                        }
+                    }
+                } else if *is_active.lock().unwrap() {
+                    // Process key input when mode is active
+                    Self::process_active_key_input(key, &key_bindings, &action_sender).await?;
+                }
+            }
+            EventType::KeyRelease(key) => {
+                debug!("Key released: {:?}", key);
+
+                // Remove modifier keys from tracking
+                if Self::is_modifier_key(&key) {
+                    pressed_modifiers.lock().unwrap().remove(&key);
+                }
+            }
+            _ => {
+                // Ignore other event types (mouse events, etc.)
             }
         }
 
@@ -295,16 +455,231 @@ impl InputHandler {
         Ok(should_activate)
     }
 
-    /// Process key input when mode is active
-    async fn process_active_key_input(
-        event: GlobalHotKeyEvent,
-        _key_bindings: &Arc<Mutex<KeyBindings>>,
-        _action_sender: &Arc<Mutex<Option<mpsc::UnboundedSender<Action>>>>,
+    /// Check if a key is a modifier key
+    fn is_modifier_key(key: &Key) -> bool {
+        matches!(
+            key,
+            Key::ShiftLeft
+                | Key::ShiftRight
+                | Key::ControlLeft
+                | Key::ControlRight
+                | Key::Alt
+                | Key::AltGr
+                | Key::MetaLeft
+                | Key::MetaRight
+        )
+    }
+
+    /// Check if a key is safe to process (avoids keys that might trigger macOS API calls)
+    fn is_safe_key(key: &Key) -> bool {
+        matches!(
+            key,
+            // Alphanumeric keys
+            Key::KeyA | Key::KeyB | Key::KeyC | Key::KeyD | Key::KeyE | Key::KeyF |
+            Key::KeyG | Key::KeyH | Key::KeyI | Key::KeyJ | Key::KeyK | Key::KeyL |
+            Key::KeyM | Key::KeyN | Key::KeyO | Key::KeyP | Key::KeyQ | Key::KeyR |
+            Key::KeyS | Key::KeyT | Key::KeyU | Key::KeyV | Key::KeyW | Key::KeyX |
+            Key::KeyY | Key::KeyZ |
+            Key::Num1 | Key::Num2 | Key::Num3 | Key::Num4 | Key::Num5 |
+            Key::Num6 | Key::Num7 | Key::Num8 | Key::Num9 | Key::Num0 |
+            // Common punctuation
+            Key::Space | Key::Comma | Key::Dot | Key::SemiColon | Key::Quote |
+            // Function keys
+            Key::F1 | Key::F2 | Key::F3 | Key::F4 | Key::F5 | Key::F6 |
+            Key::F7 | Key::F8 | Key::F9 | Key::F10 | Key::F11 | Key::F12 |
+            // Modifier keys
+            Key::ShiftLeft | Key::ShiftRight |
+            Key::ControlLeft | Key::ControlRight |
+            Key::Alt | Key::AltGr |
+            Key::MetaLeft | Key::MetaRight |
+            // CapsLock (our activation key)
+            Key::CapsLock
+        )
+    }
+
+    /// Process key press safely without triggering macOS API calls
+    fn process_key_press_safe(
+        key: Key,
+        is_active: &Arc<Mutex<bool>>,
+        double_click_state: &Arc<Mutex<DoubleClickState>>,
+        activation_config: &Arc<Mutex<ActivationConfig>>,
+        action_sender: &Arc<Mutex<Option<mpsc::UnboundedSender<Action>>>>,
+        key_bindings: &Arc<Mutex<KeyBindings>>,
+        pressed_modifiers: &Arc<Mutex<HashSet<Key>>>,
+        registered_hotkeys: &Arc<Mutex<HashSet<Key>>>,
     ) -> InputResult<()> {
-        // This would be expanded to handle actual key processing
-        // For now, just log the event
-        debug!("Processing active key input: {:?}", event);
+        info!("Safe key pressed: {:?}", key);
+
+        // Track modifier keys
+        if Self::is_modifier_key(&key) {
+            pressed_modifiers.lock().unwrap().insert(key);
+            info!("Added modifier key: {:?}", key);
+        }
+
+        // Check if this is an activation key
+        let config = activation_config.lock().unwrap().clone();
+        let registered = registered_hotkeys.lock().unwrap();
+        
+        info!("Checking activation: key={:?}, trigger_key={:?}, registered={:?}", 
+              key, config.trigger_key.to_key(), registered.contains(&key));
+
+        if key == config.trigger_key.to_key() && registered.contains(&key) {
+            info!("Activation key detected!");
+            // Check if required modifiers are pressed
+            let modifiers_pressed = pressed_modifiers.lock().unwrap();
+            let required_modifiers_pressed = config.modifier_keys.iter().all(|modifier| {
+                let required_key = match modifier {
+                    KeyModifier::Shift => Key::ShiftLeft,
+                    KeyModifier::Ctrl => Key::ControlLeft,
+                    KeyModifier::Alt => Key::Alt,
+                    KeyModifier::Cmd => Key::MetaLeft,
+                };
+                modifiers_pressed.contains(&required_key)
+            });
+
+            if required_modifiers_pressed {
+                let mut active = is_active.lock().unwrap();
+
+                if !*active {
+                    // Handle activation logic
+                    if config.double_click_required {
+                        let should_activate = Self::handle_double_click_detection(
+                            &double_click_state,
+                            config.double_click_timeout_ms,
+                        )?;
+
+                        if should_activate {
+                            *active = true;
+                            Self::send_action(
+                                Action::ActivateMode(InteractionMode::Basic),
+                                &action_sender,
+                            )?;
+                            info!("Activated mouseless mode via double-click");
+                        }
+                    } else {
+                        *active = true;
+                        Self::send_action(
+                            Action::ActivateMode(InteractionMode::Basic),
+                            &action_sender,
+                        )?;
+                        info!("Activated mouseless mode");
+                    }
+                }
+            }
+        } else if *is_active.lock().unwrap() {
+            // Process key input when mode is active
+            Self::process_active_key_input_sync(key, &key_bindings, &action_sender)?;
+        }
+
         Ok(())
+    }
+
+    /// Process key input when mode is active (synchronous version)
+    fn process_active_key_input_sync(
+        key: Key,
+        key_bindings: &Arc<Mutex<KeyBindings>>,
+        action_sender: &Arc<Mutex<Option<mpsc::UnboundedSender<Action>>>>,
+    ) -> InputResult<()> {
+        let bindings = key_bindings.lock().unwrap().clone();
+
+        // Convert rdev Key to char for comparison with bindings
+        let key_char = Self::key_to_char(&key);
+
+        if let Some(ch) = key_char {
+            let action = match ch {
+                k if k == bindings.move_up => {
+                    Action::MoveCursor(Position::new(0, -10), AnimationType::Smooth)
+                }
+                k if k == bindings.move_down => {
+                    Action::MoveCursor(Position::new(0, 10), AnimationType::Smooth)
+                }
+                k if k == bindings.move_left => {
+                    Action::MoveCursor(Position::new(-10, 0), AnimationType::Smooth)
+                }
+                k if k == bindings.move_right => {
+                    Action::MoveCursor(Position::new(10, 0), AnimationType::Smooth)
+                }
+                k if k == bindings.left_click => Action::Click(crate::models::MouseButton::Left),
+                k if k == bindings.right_click => Action::Click(crate::models::MouseButton::Right),
+                k if k == bindings.exit_key => Action::Exit,
+                k if k == bindings.speed_toggle => Action::ToggleSpeed,
+                k if k == bindings.grid_mode => Action::ActivateMode(InteractionMode::Grid),
+                k if k == bindings.area_mode => Action::ActivateMode(InteractionMode::Area),
+                k if k == bindings.prediction_mode => {
+                    Action::ActivateMode(InteractionMode::Prediction)
+                }
+                _ => Action::NoAction,
+            };
+
+            if !matches!(action, Action::NoAction) {
+                Self::send_action(action, action_sender)?;
+                debug!("Processed key '{}' -> action sent", ch);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Process key input when mode is active (async version - kept for compatibility)
+    async fn process_active_key_input(
+        key: Key,
+        key_bindings: &Arc<Mutex<KeyBindings>>,
+        action_sender: &Arc<Mutex<Option<mpsc::UnboundedSender<Action>>>>,
+    ) -> InputResult<()> {
+        Self::process_active_key_input_sync(key, key_bindings, action_sender)
+    }
+
+    /// Convert rdev Key to char (safe version that doesn't trigger macOS APIs)
+    fn key_to_char(key: &Key) -> Option<char> {
+        // Use a simple mapping that doesn't require macOS keyboard layout APIs
+        match key {
+            Key::KeyA => Some('a'),
+            Key::KeyB => Some('b'),
+            Key::KeyC => Some('c'),
+            Key::KeyD => Some('d'),
+            Key::KeyE => Some('e'),
+            Key::KeyF => Some('f'),
+            Key::KeyG => Some('g'),
+            Key::KeyH => Some('h'),
+            Key::KeyI => Some('i'),
+            Key::KeyJ => Some('j'),
+            Key::KeyK => Some('k'),
+            Key::KeyL => Some('l'),
+            Key::KeyM => Some('m'),
+            Key::KeyN => Some('n'),
+            Key::KeyO => Some('o'),
+            Key::KeyP => Some('p'),
+            Key::KeyQ => Some('q'),
+            Key::KeyR => Some('r'),
+            Key::KeyS => Some('s'),
+            Key::KeyT => Some('t'),
+            Key::KeyU => Some('u'),
+            Key::KeyV => Some('v'),
+            Key::KeyW => Some('w'),
+            Key::KeyX => Some('x'),
+            Key::KeyY => Some('y'),
+            Key::KeyZ => Some('z'),
+            Key::Num1 => Some('1'),
+            Key::Num2 => Some('2'),
+            Key::Num3 => Some('3'),
+            Key::Num4 => Some('4'),
+            Key::Num5 => Some('5'),
+            Key::Num6 => Some('6'),
+            Key::Num7 => Some('7'),
+            Key::Num8 => Some('8'),
+            Key::Num9 => Some('9'),
+            Key::Num0 => Some('0'),
+            Key::Space => Some(' '),
+            Key::Comma => Some(','),
+            Key::Dot => Some('.'),
+            Key::SemiColon => Some(';'),
+            Key::Quote => Some('\''),
+            _ => {
+                // For any other keys, return None to avoid potential macOS API calls
+                debug!("Unsupported key for character conversion: {:?}", key);
+                None
+            }
+        }
     }
 
     /// Send an action through the action channel
@@ -319,6 +694,15 @@ impl InputHandler {
                 .map_err(|e| InputError::EventProcessingFailed {
                     reason: format!("Failed to send action: {}", e),
                 })?;
+        }
+        Ok(())
+    }
+
+    /// Stop the event loop
+    pub async fn stop_event_loop(&self) -> InputResult<()> {
+        if let Some(handle) = self.event_loop_handle.lock().unwrap().take() {
+            handle.abort();
+            info!("Stopped input event loop");
         }
         Ok(())
     }
@@ -393,6 +777,54 @@ impl InputHandler {
 
         Ok(())
     }
+
+    /// Convert char to rdev Key
+    fn char_to_key(ch: char) -> Option<Key> {
+        match ch.to_ascii_lowercase() {
+            'a' => Some(Key::KeyA),
+            'b' => Some(Key::KeyB),
+            'c' => Some(Key::KeyC),
+            'd' => Some(Key::KeyD),
+            'e' => Some(Key::KeyE),
+            'f' => Some(Key::KeyF),
+            'g' => Some(Key::KeyG),
+            'h' => Some(Key::KeyH),
+            'i' => Some(Key::KeyI),
+            'j' => Some(Key::KeyJ),
+            'k' => Some(Key::KeyK),
+            'l' => Some(Key::KeyL),
+            'm' => Some(Key::KeyM),
+            'n' => Some(Key::KeyN),
+            'o' => Some(Key::KeyO),
+            'p' => Some(Key::KeyP),
+            'q' => Some(Key::KeyQ),
+            'r' => Some(Key::KeyR),
+            's' => Some(Key::KeyS),
+            't' => Some(Key::KeyT),
+            'u' => Some(Key::KeyU),
+            'v' => Some(Key::KeyV),
+            'w' => Some(Key::KeyW),
+            'x' => Some(Key::KeyX),
+            'y' => Some(Key::KeyY),
+            'z' => Some(Key::KeyZ),
+            '1' => Some(Key::Num1),
+            '2' => Some(Key::Num2),
+            '3' => Some(Key::Num3),
+            '4' => Some(Key::Num4),
+            '5' => Some(Key::Num5),
+            '6' => Some(Key::Num6),
+            '7' => Some(Key::Num7),
+            '8' => Some(Key::Num8),
+            '9' => Some(Key::Num9),
+            '0' => Some(Key::Num0),
+            ' ' => Some(Key::Space),
+            ',' => Some(Key::Comma),
+            '.' => Some(Key::Dot),
+            ';' => Some(Key::SemiColon),
+            '\'' => Some(Key::Quote),
+            _ => None,
+        }
+    }
 }
 
 #[async_trait]
@@ -435,75 +867,25 @@ impl InputProcessor for InputHandler {
     }
 
     async fn register_hotkey(&mut self, key: char, modifiers: Vec<KeyModifier>) -> InputResult<()> {
-        // Convert char to Code (simplified mapping)
-        let code = match key.to_ascii_lowercase() {
-            'a' => Code::KeyA,
-            'b' => Code::KeyB,
-            'c' => Code::KeyC,
-            'd' => Code::KeyD,
-            'e' => Code::KeyE,
-            'f' => Code::KeyF,
-            'g' => Code::KeyG,
-            'h' => Code::KeyH,
-            'i' => Code::KeyI,
-            'j' => Code::KeyJ,
-            'k' => Code::KeyK,
-            'l' => Code::KeyL,
-            'm' => Code::KeyM,
-            'n' => Code::KeyN,
-            'o' => Code::KeyO,
-            'p' => Code::KeyP,
-            'q' => Code::KeyQ,
-            'r' => Code::KeyR,
-            's' => Code::KeyS,
-            't' => Code::KeyT,
-            'u' => Code::KeyU,
-            'v' => Code::KeyV,
-            'w' => Code::KeyW,
-            'x' => Code::KeyX,
-            'y' => Code::KeyY,
-            'z' => Code::KeyZ,
-            '1' => Code::Digit1,
-            '2' => Code::Digit2,
-            '3' => Code::Digit3,
-            '4' => Code::Digit4,
-            '5' => Code::Digit5,
-            '6' => Code::Digit6,
-            '7' => Code::Digit7,
-            '8' => Code::Digit8,
-            '9' => Code::Digit9,
-            '0' => Code::Digit0,
-            ' ' => Code::Space,
-            _ => {
-                return Err(InputError::InvalidKeyBinding {
-                    binding: format!("Unsupported key: '{}'", key),
-                })
-            }
-        };
-
-        // Convert modifiers
-        let mut global_modifiers = Modifiers::empty();
-        for modifier in &modifiers {
-            match modifier {
-                KeyModifier::Shift => global_modifiers |= Modifiers::SHIFT,
-                KeyModifier::Ctrl => global_modifiers |= Modifiers::CONTROL,
-                KeyModifier::Alt => global_modifiers |= Modifiers::ALT,
-                KeyModifier::Cmd => global_modifiers |= Modifiers::META,
-            }
-        }
-
-        // Create and register hotkey
-        let hotkey = HotKey::new(Some(global_modifiers), code);
-
-        self.hotkey_manager.register(hotkey).map_err(|_e| {
-            InputError::HotkeyRegistrationFailed {
-                key: key.to_string(),
-            }
+        // Convert char to rdev Key
+        let rdev_key = Self::char_to_key(key).ok_or_else(|| InputError::InvalidKeyBinding {
+            binding: format!("Unsupported key: '{}'", key),
         })?;
 
         // Store the registered hotkey
         let mut registered = self.registered_hotkeys.lock().unwrap();
-        registered.insert(hotkey.id(), key.to_string());
+        registered.insert(rdev_key);
+
+        // Also register modifier keys
+        for modifier in &modifiers {
+            let modifier_key = match modifier {
+                KeyModifier::Shift => Key::ShiftLeft,
+                KeyModifier::Ctrl => Key::ControlLeft,
+                KeyModifier::Alt => Key::Alt,
+                KeyModifier::Cmd => Key::MetaLeft,
+            };
+            registered.insert(modifier_key);
+        }
 
         info!(
             "Registered hotkey: '{}' with modifiers: {:?}",
@@ -540,16 +922,24 @@ impl InputProcessor for InputHandler {
     }
 }
 
+impl Drop for InputHandler {
+    fn drop(&mut self) {
+        if let Some(handle) = self.event_loop_handle.lock().unwrap().take() {
+            handle.abort();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::time::SystemTime;
 
     #[test]
-    fn test_activation_key_to_code() {
-        assert_eq!(ActivationKey::CapsLock.to_code(), Code::CapsLock);
-        assert_eq!(ActivationKey::Ctrl.to_code(), Code::ControlLeft);
-        assert_eq!(ActivationKey::F1.to_code(), Code::F1);
+    fn test_activation_key_to_key() {
+        assert_eq!(ActivationKey::CapsLock.to_key(), Key::CapsLock);
+        assert_eq!(ActivationKey::Ctrl.to_key(), Key::ControlLeft);
+        assert_eq!(ActivationKey::F1.to_key(), Key::F1);
     }
 
     #[test]
@@ -585,62 +975,76 @@ mod tests {
 
     #[tokio::test]
     async fn test_input_handler_creation() {
-        // Skip this test if we can't create a GlobalHotKeyManager (e.g., in CI)
-        if let Ok(handler) = InputHandler::new() {
-            assert!(!handler.is_active());
-        } else {
-            // Test passed - we can't create a GlobalHotKeyManager in this environment
-            println!("Skipping test - GlobalHotKeyManager not available");
-        }
+        let handler = InputHandler::new().unwrap();
+        assert!(!handler.is_active());
     }
 
     #[tokio::test]
     async fn test_process_key_event() {
-        // Skip this test if we can't create a GlobalHotKeyManager (e.g., in CI)
-        if let Ok(handler) = InputHandler::new() {
-            // Test inactive state
-            let key_input = KeyInput {
-                key: 'i',
-                modifiers: vec![],
-                timestamp: SystemTime::now(),
-            };
+        let handler = InputHandler::new().unwrap();
 
-            let action = handler.process_key_event(key_input.clone()).await.unwrap();
-            assert_eq!(action, Action::NoAction);
+        // Test inactive state
+        let key_input = KeyInput {
+            key: 'i',
+            modifiers: vec![],
+            timestamp: SystemTime::now(),
+        };
 
-            // Activate and test again
-            let mut handler = handler;
-            handler.activate().await.unwrap();
+        let action = handler.process_key_event(key_input.clone()).await.unwrap();
+        assert_eq!(action, Action::NoAction);
 
-            let action = handler.process_key_event(key_input).await.unwrap();
-            match action {
-                Action::MoveCursor(pos, AnimationType::Smooth) => {
-                    assert_eq!(pos.x, 0);
-                    assert_eq!(pos.y, -10);
-                }
-                _ => panic!("Expected MoveCursor action"),
+        // Activate and test again
+        let mut handler = handler;
+        handler.activate().await.unwrap();
+
+        let action = handler.process_key_event(key_input).await.unwrap();
+        match action {
+            Action::MoveCursor(pos, AnimationType::Smooth) => {
+                assert_eq!(pos.x, 0);
+                assert_eq!(pos.y, -10);
             }
-        } else {
-            // Test passed - we can't create a GlobalHotKeyManager in this environment
-            println!("Skipping test - GlobalHotKeyManager not available");
+            _ => panic!("Expected MoveCursor action"),
         }
     }
 
     #[tokio::test]
     async fn test_update_bindings() {
-        // Skip this test if we can't create a GlobalHotKeyManager (e.g., in CI)
-        if let Ok(mut handler) = InputHandler::new() {
-            let mut new_bindings = KeyBindings::default();
-            new_bindings.move_up = 'w';
+        let mut handler = InputHandler::new().unwrap();
+        let mut new_bindings = KeyBindings::default();
+        new_bindings.move_up = 'w';
 
-            let result = handler.update_bindings(new_bindings.clone()).await;
-            assert!(result.is_ok());
+        let result = handler.update_bindings(new_bindings.clone()).await;
+        assert!(result.is_ok());
 
-            let stored_bindings = handler.key_bindings.lock().unwrap().clone();
-            assert_eq!(stored_bindings.move_up, 'w');
-        } else {
-            // Test passed - we can't create a GlobalHotKeyManager in this environment
-            println!("Skipping test - GlobalHotKeyManager not available");
-        }
+        let stored_bindings = handler.key_bindings.lock().unwrap().clone();
+        assert_eq!(stored_bindings.move_up, 'w');
+    }
+
+    #[test]
+    fn test_char_to_key_conversion() {
+        assert_eq!(InputHandler::char_to_key('a'), Some(Key::KeyA));
+        assert_eq!(InputHandler::char_to_key('z'), Some(Key::KeyZ));
+        assert_eq!(InputHandler::char_to_key('1'), Some(Key::Num1));
+        assert_eq!(InputHandler::char_to_key(' '), Some(Key::Space));
+        assert_eq!(InputHandler::char_to_key('!'), None);
+    }
+
+    #[test]
+    fn test_key_to_char_conversion() {
+        assert_eq!(InputHandler::key_to_char(&Key::KeyA), Some('a'));
+        assert_eq!(InputHandler::key_to_char(&Key::KeyZ), Some('z'));
+        assert_eq!(InputHandler::key_to_char(&Key::Num1), Some('1'));
+        assert_eq!(InputHandler::key_to_char(&Key::Space), Some(' '));
+        assert_eq!(InputHandler::key_to_char(&Key::F1), None);
+    }
+
+    #[test]
+    fn test_is_modifier_key() {
+        assert!(InputHandler::is_modifier_key(&Key::ShiftLeft));
+        assert!(InputHandler::is_modifier_key(&Key::ControlLeft));
+        assert!(InputHandler::is_modifier_key(&Key::Alt));
+        assert!(InputHandler::is_modifier_key(&Key::MetaLeft));
+        assert!(!InputHandler::is_modifier_key(&Key::KeyA));
+        assert!(!InputHandler::is_modifier_key(&Key::Space));
     }
 }

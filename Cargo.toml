@@ -1,8 +1,5 @@
 [workspace]
-members = [
-    "mouseless-app",
-    "mouseless-core",
-]
+members = ["mouseless-app", "mouseless-core"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -19,16 +16,14 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # Mouse and input control
 enigo = "0.2"
-global-hotkey = "0.6"
+rdev = { git = "https://github.com/Narsil/rdev", branch = "main" }
 
 # UI framework
 tauri = { version = "2.0", features = ["macos-private-api", "tray-icon"] }
 
-# macOS specific
-cocoa = "0.25"
-
 # Configuration
 toml = "0.8"
+dirs = "5.0"
 
 # Async utilities
 async-trait = "0.1"

@@ -5,7 +5,7 @@ async fn test_mouse_service_creation() {
     let mouse_service = MouseService::new();
 
     // Test that the service can be cloned (for sharing across threads)
-    let cloned_service = mouse_service.clone();
+    let _cloned_service = mouse_service.clone();
 
     // Both services should be able to handle requests
     // Note: We're not actually moving the mouse in tests to avoid side effects
@@ -26,7 +26,7 @@ async fn test_mouse_service_multiple_operations() {
     // (actual mouse movement would require a display environment)
 
     // This test demonstrates the API usage pattern
-    let positions = [(100, 100), (200, 200), (300, 300),()];
+    let positions = [(100, 100), (200, 200), (300, 300)];
 
     for (x, y) in positions {
         // In a real environment with display, this would work:

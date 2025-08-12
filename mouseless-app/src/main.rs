@@ -1,11 +1,14 @@
-use mouseless_core::{init, AppInfo, MouseService, Result};
-use std::sync::{Arc, Mutex};
+use mouseless_core::{
+    init, AppInfo, ConfigManager, InputHandler, ModeController, ModeManager, MouseService, Result,
+};
+use std::sync::Arc;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
     App, AppHandle, Manager,
 };
-use tracing::{info, warn};
+use tokio::sync::Mutex;
+use tracing::{error, info, warn};
 
 mod tauri_commands;
 mod ui_manager;
@@ -54,22 +57,159 @@ fn setup_app(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error
     let app_handle = app.handle().clone();
 
     info!("🚀 Starting Tauri application setup...");
-    
-    // Hide from dock on macOS
-    #[cfg(target_os = "macos")]
+
+
+    // Initialize ConfigManager and load ~/.mouseless.toml
+    info!("⚙️ Initializing Configuration Manager...");
+    let config_path = dirs::home_dir()
+        .ok_or("Could not determine home directory")?
+        .join(".mouseless.toml");
+
+    let mut config_manager = ConfigManager::new(&config_path);
+    if let Err(e) = config_manager.load() {
+        warn!("Failed to load configuration: {}, using defaults", e);
+    }
+    let app_config = config_manager.get_config().clone();
+    app.manage(Arc::new(Mutex::new(config_manager)));
+    info!("✅ Configuration Manager initialized");
+
+    // Set up SIGHUP signal handler for configuration reload
+    #[cfg(unix)]
     {
-        use cocoa::appkit::{NSApp, NSApplication, NSApplicationActivationPolicy};
-        unsafe {
-            let app = NSApp();
-            app.setActivationPolicy_(NSApplicationActivationPolicy::NSApplicationActivationPolicyAccessory);
-        }
+        info!("📡 Setting up SIGHUP signal handler for configuration reload...");
+        let app_handle_signal = app_handle.clone();
+        tauri::async_runtime::spawn(async move {
+            use tokio::signal::unix::{signal, SignalKind};
+            let mut sighup =
+                signal(SignalKind::hangup()).expect("Failed to register SIGHUP handler");
+
+            loop {
+                sighup.recv().await;
+                info!("Received SIGHUP signal, reloading configuration...");
+
+                if let Some(config_manager) =
+                    app_handle_signal.try_state::<Arc<Mutex<ConfigManager>>>()
+                {
+                    let mut manager = config_manager.lock().await;
+                    if let Err(e) = manager.load() {
+                        error!("Failed to reload configuration: {}", e);
+                    } else {
+                        info!("Configuration reloaded successfully");
+                    }
+                }
+            }
+        });
+        info!("✅ SIGHUP signal handler set up");
     }
 
-    //TODO: Initialize ConfigManager and load ~/.mouseless.toml
-    //TODO: Set up SIGHUP signal handler for configuration reload
-    //TODO: Initialize InputHandler with global hotkey registration
-    //TODO: Initialize ModeManager with configuration-driven settings
-    //TODO: Set up inter-component communication channels
+    // Initialize InputHandler with global hotkey registration
+    info!("⌨️ Initializing Input Handler...");
+    let mut input_handler =
+        InputHandler::new().map_err(|e| format!("Failed to create InputHandler: {}", e))?;
+
+    // Update input handler with configuration
+    input_handler
+        .update_activation_config(app_config.activation.clone())
+        .map_err(|e| format!("Failed to update activation config: {}", e))?;
+
+    // Register activation hotkey
+    input_handler
+        .register_activation_hotkey()
+        .map_err(|e| format!("Failed to register activation hotkey: {}", e))?;
+
+    // Set up action channel for inter-component communication
+    let action_receiver = input_handler.setup_action_channel();
+
+    // Start the input event loop asynchronously
+    let input_handler_clone = Arc::new(Mutex::new(input_handler));
+    let input_handler_for_spawn = Arc::clone(&input_handler_clone);
+    tauri::async_runtime::spawn(async move {
+        let mut handler = input_handler_for_spawn.lock().await;
+        if let Err(e) = handler.start_event_loop().await {
+            error!("Failed to start input event loop: {}", e);
+        }
+    });
+
+    app.manage(input_handler_clone);
+    info!("✅ Input Handler initialized and hotkeys registered");
+
+    // Initialize ModeManager with configuration-driven settings
+    info!("🎯 Initializing Mode Manager...");
+    let mode_manager = ModeManager::new(app_config.keybindings.clone());
+
+    // Set up movement speed from configuration
+    mode_manager.set_movement_speed(match app_config.movement.default_speed {
+        mouseless_core::MovementSpeed::Slow => app_config.movement.slow_speed_multiplier,
+        mouseless_core::MovementSpeed::Normal => 1.0,
+        mouseless_core::MovementSpeed::Fast => app_config.movement.fast_speed_multiplier,
+    });
+
+    app.manage(Arc::new(Mutex::new(mode_manager)));
+    info!("✅ Mode Manager initialized");
+
+    // Set up inter-component communication channels
+    info!("📡 Setting up inter-component communication...");
+    let app_handle_comm = app_handle.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut action_receiver = action_receiver;
+
+        while let Some(action) = action_receiver.recv().await {
+            info!("Received action: {:?}", action);
+
+            // Process actions through the mode manager and mouse service
+            if let Some(mode_manager) = app_handle_comm.try_state::<Arc<Mutex<ModeManager>>>() {
+                if let Some(mouse_service) = app_handle_comm.try_state::<MouseService>() {
+                    // Handle the action based on its type
+                    match action {
+                        mouseless_core::Action::MoveCursor(position, _animation_type) => {
+                            if let Err(e) =
+                                mouse_service.move_to_relative(position.x, position.y).await
+                            {
+                                error!("Failed to move cursor: {}", e);
+                            }
+                        }
+                        mouseless_core::Action::Click(button) => {
+                            if let Err(e) = mouse_service.click(button).await {
+                                error!("Failed to click: {}", e);
+                            }
+                        }
+                        mouseless_core::Action::ActivateMode(mode) => {
+                            if let Some(mode_manager) =
+                                app_handle_comm.try_state::<Arc<Mutex<ModeManager>>>()
+                            {
+                                let mut manager = mode_manager.lock().await;
+                                if let Err(e) = manager.activate_mode(mode).await {
+                                    error!("Failed to activate mode: {}", e);
+                                }
+                            }
+                        }
+                        mouseless_core::Action::Exit => {
+                            if let Some(mode_manager) =
+                                app_handle_comm.try_state::<Arc<Mutex<ModeManager>>>()
+                            {
+                                let mut manager = mode_manager.lock().await;
+                                if let Err(e) = manager.deactivate_current_mode().await {
+                                    error!("Failed to deactivate mode: {}", e);
+                                }
+                            }
+                        }
+                        mouseless_core::Action::ToggleSpeed => {
+                            if let Some(mode_manager) =
+                                app_handle_comm.try_state::<Arc<Mutex<ModeManager>>>()
+                            {
+                                let manager = mode_manager.lock().await;
+                                manager.toggle_speed();
+                            }
+                        }
+                        _ => {
+                            // Handle other actions as needed
+                        }
+                    }
+                }
+            }
+        }
+    });
+    info!("✅ Inter-component communication channels set up");
 
     // Initialize UI Manager
     info!("📱 Initializing UI Manager...");
